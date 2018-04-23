@@ -32,3 +32,6 @@ find_package(LIBIGL REQUIRED QUIET)
 file(GLOB SRCFILES src/main.cpp)
 add_executable(${PROJECT_NAME}_bin ${SRCFILES})
 target_link_libraries(${PROJECT_NAME}_bin igl::core igl::opengl_glfw igl::opengl_glfw_imgui)
+
+# Put resource files into output directory
+file(COPY data DESTINATION ${CMAKE_BINARY_DIR})
