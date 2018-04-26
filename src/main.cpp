@@ -50,6 +50,9 @@ int main(int argc, char *argv[])
                 viewer.data().set_mesh(V_uv, F);
                 viewer.data().set_uv(V_uv);
                 viewer.core.align_camera_center(V_uv, F);
+
+                // Recompute the normal in 2D plane
+                viewer.data().compute_normals();
             }
         }
     };
