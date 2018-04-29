@@ -6,7 +6,6 @@
 #include <igl/boundary_loop.h>
 #include <igl/harmonic.h>
 #include <igl/map_vertices_to_circle.h>
-#include <igl/colormap.h>
 #include <igl/jet.h>
 #include <Eigen/Core>
 
@@ -53,10 +52,9 @@ int main(int argc, char *argv[])
             viewer.core.align_camera_center(V, F);
         }
 
-        // Add new group
-        if (ImGui::CollapsingHeader("Remeshing Controls", ImGuiTreeNodeFlags_DefaultOpen))
+        if (ImGui::CollapsingHeader("Parameterization", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            if (ImGui::Button("Parameterize"))
+            if (ImGui::Button("Harmonic"))
             {
                 harmonic_parameterization();
 
@@ -67,7 +65,10 @@ int main(int argc, char *argv[])
                 // Recompute the normal in 2D plane
                 viewer.data().compute_normals();
             }
+        }
 
+        if (ImGui::CollapsingHeader("Geometry Maps", ImGuiTreeNodeFlags_DefaultOpen))
+        {
             if (ImGui::Button("Area Map"))
             {
                 calc_area_map();
