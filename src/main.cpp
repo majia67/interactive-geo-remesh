@@ -7,6 +7,7 @@
 #include <igl/harmonic.h>
 #include <igl/map_vertices_to_circle.h>
 #include <igl/jet.h>
+#include <igl/gaussian_curvature.h>
 #include <Eigen/Core>
 
 using namespace Eigen;
@@ -16,10 +17,12 @@ MatrixXd V(0, 3);                //vertex array, #V x3
 MatrixXi F(0, 3);                //face array, #F x3
 MatrixXd V_uv(0, 2);             //vertex array in the UV plane, #V x2
 
-VectorXd area_map;             //area map, #F x3
+VectorXd area_map;               //area map, #F x1
+VectorXd gaus_curv_map;     //gaussian curvature map, #V x1
 
 void harmonic_parameterization();
 void calc_area_map();
+void calc_gaussian_curvature_map();
 
 int main(int argc, char *argv[])
 {
@@ -79,6 +82,17 @@ int main(int argc, char *argv[])
                 viewer.data().set_mesh(V_uv, F);
                 viewer.data().set_colors(color);
             }
+
+            if (ImGui::Button("Gaussian Curvature Map"))
+            {
+                calc_gaussian_curvature_map();
+
+                MatrixXd color;
+                igl::jet(gaus_curv_map, false, color);
+
+                viewer.data().set_mesh(V_uv, F);
+                viewer.data().set_colors(color);
+            }
         }
     };
     
@@ -109,4 +123,18 @@ void calc_area_map()
 
     area_map.resize(F.rows());
     area_map << dblA3D / dblA2D;
+}
+
+void calc_gaussian_curvature_map()
+{
+    // Calculate per-vertex discrete gaussian curvature
+    VectorXd K;
+    igl::gaussian_curvature(V, F, K);
+
+    // Using the mean per-vertex gaussian curvature to estimate the curvature on each face
+    gaus_curv_map.resize(F.rows());
+    for (int i = 0; i < F.rows(); i++)
+    {
+        gaus_curv_map(i) = (K(F(i, 0)) + K(F(i, 1)) + K(F(i, 2))) / 3.0;
+    }
 }
