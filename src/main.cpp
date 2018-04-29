@@ -45,8 +45,13 @@ int main(int argc, char *argv[])
     // Add content to the default menu window
     menu.callback_draw_viewer_menu = [&]()
     {
-        // Draw parent menu content
-        menu.draw_viewer_menu();
+        if (ImGui::Button("Reset Mesh"))
+        {
+            viewer.data().clear();
+
+            viewer.data().set_mesh(V, F);
+            viewer.core.align_camera_center(V, F);
+        }
 
         // Add new group
         if (ImGui::CollapsingHeader("Remeshing Controls", ImGuiTreeNodeFlags_DefaultOpen))
