@@ -6,13 +6,21 @@
 #include <igl/boundary_loop.h>
 #include <igl/harmonic.h>
 #include <igl/map_vertices_to_circle.h>
+#include <igl/colormap.h>
+#include <igl/jet.h>
 #include <Eigen/Core>
 
-Eigen::MatrixXd V(0, 3);                //vertex array, #V x3
-Eigen::MatrixXi F(0, 3);                //face array, #F x3
-Eigen::MatrixXd V_uv(0, 2);             //vertex array in the UV plane, #V x3
+using namespace Eigen;
+using namespace std;
+
+MatrixXd V(0, 3);                //vertex array, #V x3
+MatrixXi F(0, 3);                //face array, #F x3
+MatrixXd V_uv(0, 2);             //vertex array in the UV plane, #V x2
+
+VectorXd area_map;             //area map, #F x3
 
 void harmonic_parameterization();
+void calc_area_map();
 
 int main(int argc, char *argv[])
 {
@@ -54,6 +62,17 @@ int main(int argc, char *argv[])
                 // Recompute the normal in 2D plane
                 viewer.data().compute_normals();
             }
+
+            if (ImGui::Button("Area Map"))
+            {
+                calc_area_map();
+
+                MatrixXd color;
+                igl::jet(area_map, false, color);
+
+                viewer.data().set_mesh(V_uv, F);
+                viewer.data().set_colors(color);
+            }
         }
     };
     
@@ -63,13 +82,25 @@ int main(int argc, char *argv[])
 void harmonic_parameterization()
 {
     // Find the open boundary
-    Eigen::VectorXi bnd;
+    VectorXi bnd;
     igl::boundary_loop(F, bnd);
 
     // Map the boundary to a circle, preserving edge proportions
-    Eigen::MatrixXd bnd_uv;
+    MatrixXd bnd_uv;
     igl::map_vertices_to_circle(V, bnd, bnd_uv);
 
     // Harmonic parametrization for the internal vertices
     igl::harmonic(V, F, bnd, bnd_uv, 1, V_uv);
+}
+
+void calc_area_map()
+{
+    ArrayXd dblA3D;
+    ArrayXd dblA2D;
+
+    igl::doublearea(V, F, dblA3D);
+    igl::doublearea(V_uv, F, dblA2D);
+
+    area_map.resize(F.rows());
+    area_map << dblA3D / dblA2D;
 }
