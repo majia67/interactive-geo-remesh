@@ -18,11 +18,13 @@ MatrixXi F(0, 3);                //face array, #F x3
 MatrixXd V_uv(0, 2);             //vertex array in the UV plane, #V x2
 
 VectorXd area_map;               //area map, #F x1
-VectorXd gaus_curv_map;     //gaussian curvature map, #V x1
+VectorXd gaus_curv_map;          //gaussian curvature map, #V x1
+VectorXd control_map;            //control map, #F x1
 
 void harmonic_parameterization();
 void calc_area_map();
 void calc_gaussian_curvature_map();
+void calc_control_map();
 
 int main(int argc, char *argv[])
 {
@@ -93,6 +95,17 @@ int main(int argc, char *argv[])
                 viewer.data().set_mesh(V_uv, F);
                 viewer.data().set_colors(color);
             }
+
+            if (ImGui::Button("Control Map"))
+            {
+                calc_control_map();
+
+                MatrixXd color;
+                igl::jet(control_map, false, color);
+
+                viewer.data().set_mesh(V_uv, F);
+                viewer.data().set_colors(color);
+            }
         }
     };
     
@@ -137,4 +150,10 @@ void calc_gaussian_curvature_map()
     {
         gaus_curv_map(i) = (K(F(i, 0)) + K(F(i, 1)) + K(F(i, 2))) / 3.0;
     }
+}
+
+void calc_control_map()
+{
+    control_map.resize(F.rows());
+    control_map << area_map.array() * gaus_curv_map.array();
 }
