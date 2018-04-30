@@ -21,10 +21,13 @@ VectorXd area_map;               //area map, #F x1
 VectorXd gaus_curv_map;          //gaussian curvature map, #V x1
 VectorXd control_map;            //control map, #F x1
 
+int num_of_samples;       //number of samples
+
 void harmonic_parameterization();
 void calc_area_map();
 void calc_gaussian_curvature_map();
 void calc_control_map();
+void sampling();
 
 int main(int argc, char *argv[])
 {
@@ -37,6 +40,9 @@ int main(int argc, char *argv[])
     // Read mesh
     igl::readOFF(argv[1], V, F);
     assert(V.rows() > 0);
+
+    // Initialize variables
+    num_of_samples = V.rows();
 
     // Plot the mesh
     igl::opengl::glfw::Viewer viewer;
@@ -107,6 +113,16 @@ int main(int argc, char *argv[])
                 viewer.data().set_colors(color);
             }
         }
+
+        if (ImGui::CollapsingHeader("Sampling", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::InputInt("samples", &num_of_samples);
+
+            if (ImGui::Button("Perform Sampling"))
+            {
+                sampling();
+            }
+        }
     };
     
     viewer.launch();
@@ -156,4 +172,9 @@ void calc_control_map()
 {
     control_map.resize(F.rows());
     control_map << area_map.array() * gaus_curv_map.array();
+}
+
+void sampling()
+{
+    
 }
