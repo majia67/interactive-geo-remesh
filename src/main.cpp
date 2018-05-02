@@ -21,7 +21,8 @@ VectorXd area_map;               //area map, #F x1
 VectorXd gaus_curv_map;          //gaussian curvature map, #V x1
 VectorXd control_map;            //control map, #F x1
 
-int num_of_samples;       //number of samples
+int num_of_samples;              //number of samples
+bool is_inverse_mode;            //inverse mode control
 
 void harmonic_parameterization();
 void calc_area_map();
@@ -44,6 +45,7 @@ int main(int argc, char *argv[])
 
     // Initialize variables
     num_of_samples = V.rows();
+    is_inverse_mode = true;
 
     // Plot the mesh
     igl::opengl::glfw::Viewer viewer;
@@ -63,6 +65,8 @@ int main(int argc, char *argv[])
             viewer.data().set_mesh(V, F);
             viewer.core.align_camera_center(V, F);
         }
+
+        ImGui::Checkbox("Inverse Mode", &is_inverse_mode);
 
         if (ImGui::CollapsingHeader("Parameterization", ImGuiTreeNodeFlags_DefaultOpen))
         {
@@ -153,12 +157,20 @@ void calc_area_map()
 
     area_map.resize(F.rows());
     area_map << dblA3D / dblA2D;
+
+    if (is_inverse_mode) {
+        area_map = 1 - area_map.array();
+    }
 }
 
 void calc_gaussian_curvature_map()
 {
     // Calculate per-vertex discrete gaussian curvature
     igl::gaussian_curvature(V, F, gaus_curv_map);
+
+    if (is_inverse_mode) {
+        gaus_curv_map = 1 - gaus_curv_map.array();
+    }
 }
 
 void calc_control_map()
