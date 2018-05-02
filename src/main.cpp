@@ -158,15 +158,7 @@ void calc_area_map()
 void calc_gaussian_curvature_map()
 {
     // Calculate per-vertex discrete gaussian curvature
-    VectorXd K;
-    igl::gaussian_curvature(V, F, K);
-
-    // Using the mean per-vertex gaussian curvature to estimate the curvature on each face
-    gaus_curv_map.resize(F.rows());
-    for (int i = 0; i < F.rows(); i++)
-    {
-        gaus_curv_map(i) = (K(F(i, 0)) + K(F(i, 1)) + K(F(i, 2))) / 3.0;
-    }
+    igl::gaussian_curvature(V, F, gaus_curv_map);
 }
 
 void calc_control_map()
