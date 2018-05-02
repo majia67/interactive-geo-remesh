@@ -8,7 +8,10 @@
 #include <igl/map_vertices_to_circle.h>
 #include <igl/jet.h>
 #include <igl/gaussian_curvature.h>
+#include <igl/png/writePNG.h>
 #include <Eigen/Core>
+
+#include "types.hpp"
 
 using namespace Eigen;
 using namespace std;
@@ -19,7 +22,7 @@ MatrixXd V_uv(0, 2);             //vertex array in the UV plane, #V x2
 
 VectorXd area_map;               //area map, #F x1
 VectorXd gaus_curv_map;          //gaussian curvature map, #V x1
-VectorXd control_map;            //control map, #F x1
+Buffer control_map;              //control map, #F x1
 
 int num_of_samples;              //number of samples
 bool is_inverse_mode;            //inverse mode control
@@ -27,7 +30,8 @@ bool is_inverse_mode;            //inverse mode control
 void harmonic_parameterization();
 void calc_area_map();
 void calc_gaussian_curvature_map();
-void calc_control_map();
+void calc_control_map(igl::opengl::glfw::Viewer &viewer);
+void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map);
 void sampling();
 void grayscale_jet(VectorXd &scalar_map, MatrixXd &color);
 
@@ -88,34 +92,19 @@ int main(int argc, char *argv[])
             if (ImGui::Button("Area Map"))
             {
                 calc_area_map();
-
-                MatrixXd color;
-                grayscale_jet(area_map, color);
-
-                viewer.data().set_mesh(V_uv, F);
-                viewer.data().set_colors(color);
+                render_map(viewer, area_map);
             }
 
             if (ImGui::Button("Gaussian Curvature Map"))
             {
                 calc_gaussian_curvature_map();
-
-                MatrixXd color;
-                grayscale_jet(gaus_curv_map, color);
-
-                viewer.data().set_mesh(V_uv, F);
-                viewer.data().set_colors(color);
+                render_map(viewer, gaus_curv_map);
             }
 
             if (ImGui::Button("Control Map"))
             {
-                calc_control_map();
-
-                MatrixXd color;
-                grayscale_jet(control_map, color);
-
-                viewer.data().set_mesh(V_uv, F);
-                viewer.data().set_colors(color);
+                calc_control_map(viewer);
+                igl::png::writePNG(control_map.R, control_map.G, control_map.B, control_map.A, "control_map.png");
             }
         }
 
@@ -173,10 +162,26 @@ void calc_gaussian_curvature_map()
     }
 }
 
-void calc_control_map()
+void calc_control_map(igl::opengl::glfw::Viewer &viewer)
 {
-    control_map.resize(F.rows());
-    control_map << area_map.array() * gaus_curv_map.array();
+    Buffer temp;
+
+    render_map(viewer, area_map);
+    viewer.core.draw_buffer(viewer.data(), false, temp.R, temp.G, temp.B, temp.A);
+    control_map = temp;
+
+    render_map(viewer, gaus_curv_map);
+    viewer.core.draw_buffer(viewer.data(), false, temp.R, temp.G, temp.B, temp.A);
+    control_map *= temp;
+}
+
+void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map)
+{
+    MatrixXd color;
+    grayscale_jet(map, color);
+
+    viewer.data().set_mesh(V_uv, F);
+    viewer.data().set_colors(color);
 }
 
 void sampling()
