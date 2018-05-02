@@ -28,6 +28,7 @@ void calc_area_map();
 void calc_gaussian_curvature_map();
 void calc_control_map();
 void sampling();
+void grayscale_jet(VectorXd &scalar_map, MatrixXd &color);
 
 int main(int argc, char *argv[])
 {
@@ -85,7 +86,7 @@ int main(int argc, char *argv[])
                 calc_area_map();
 
                 MatrixXd color;
-                igl::jet(area_map, false, color);
+                grayscale_jet(area_map, color);
 
                 viewer.data().set_mesh(V_uv, F);
                 viewer.data().set_colors(color);
@@ -96,7 +97,7 @@ int main(int argc, char *argv[])
                 calc_gaussian_curvature_map();
 
                 MatrixXd color;
-                igl::jet(gaus_curv_map, false, color);
+                grayscale_jet(gaus_curv_map, color);
 
                 viewer.data().set_mesh(V_uv, F);
                 viewer.data().set_colors(color);
@@ -107,7 +108,7 @@ int main(int argc, char *argv[])
                 calc_control_map();
 
                 MatrixXd color;
-                igl::jet(control_map, false, color);
+                grayscale_jet(control_map, color);
 
                 viewer.data().set_mesh(V_uv, F);
                 viewer.data().set_colors(color);
@@ -177,4 +178,20 @@ void calc_control_map()
 void sampling()
 {
     
+}
+
+void grayscale_jet(VectorXd &scalar_map, MatrixXd &color)
+{
+    double min_z = scalar_map.minCoeff();
+    double max_z = scalar_map.maxCoeff();
+    double denom = max_z - min_z;
+
+    color.resize(scalar_map.size(), 3);
+    for (int i = 0; i < scalar_map.size(); i++)
+    {
+        double norm = (scalar_map(i) - min_z) / denom;
+        color(i, 0) = norm;
+        color(i, 1) = norm;
+        color(i, 2) = norm;
+    }
 }
