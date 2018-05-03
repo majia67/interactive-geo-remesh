@@ -8,7 +8,6 @@
 #include <igl/map_vertices_to_circle.h>
 #include <igl/jet.h>
 #include <igl/gaussian_curvature.h>
-#include <igl/png/writePNG.h>
 #include <Eigen/Core>
 
 #include "types.hpp"
@@ -104,7 +103,31 @@ int main(int argc, char *argv[])
             if (ImGui::Button("Control Map"))
             {
                 calc_control_map(viewer);
-                igl::png::writePNG(control_map.R, control_map.G, control_map.B, control_map.A, "control_map.png");
+
+                // Replace the mesh with a triangulated square
+                MatrixXd V(4, 3);
+                V <<
+                    -0.5, -0.5, 0,
+                    0.5, -0.5, 0,
+                    0.5, 0.5, 0,
+                    -0.5, 0.5, 0;
+                MatrixXi F(2, 3);
+                F <<
+                    0, 1, 2,
+                    2, 3, 0;
+                MatrixXd UV(4, 2);
+                UV <<
+                    0, 0,
+                    1, 0,
+                    1, 1,
+                    0, 1;
+
+                viewer.data().clear();
+                viewer.data().set_mesh(V, F);
+                viewer.data().set_uv(UV);
+                viewer.core.align_camera_center(V);
+                viewer.data().show_texture = true;
+                viewer.data().set_texture(control_map.R, control_map.G, control_map.B);
             }
         }
 

@@ -19,7 +19,7 @@ option(LIBIGL_WITH_MOSEK             "Use MOSEK"          OFF)
 option(LIBIGL_WITH_OPENGL            "Use OpenGL"         ON)
 option(LIBIGL_WITH_OPENGL_GLFW       "Use GLFW"           ON)
 option(LIBIGL_WITH_OPENGL_GLFW_IMGUI "Use ImGui"          ON)
-option(LIBIGL_WITH_PNG               "Use PNG"            ON)
+option(LIBIGL_WITH_PNG               "Use PNG"            OFF)
 option(LIBIGL_WITH_PYTHON            "Use Python"         OFF)
 option(LIBIGL_WITH_TETGEN            "Use Tetgen"         OFF)
 option(LIBIGL_WITH_TRIANGLE          "Use Triangle"       OFF)
@@ -31,7 +31,7 @@ find_package(LIBIGL REQUIRED QUIET)
 # Add your project files
 file(GLOB SRCFILES src/main.cpp src/types.cpp)
 add_executable(${PROJECT_NAME}_bin ${SRCFILES})
-target_link_libraries(${PROJECT_NAME}_bin igl::core igl::opengl igl::opengl_glfw igl::opengl_glfw_imgui igl::png)
+target_link_libraries(${PROJECT_NAME}_bin igl::core igl::opengl igl::opengl_glfw igl::opengl_glfw_imgui)
 
 # Put resource files into output directory
 file(COPY data DESTINATION ${CMAKE_BINARY_DIR})
