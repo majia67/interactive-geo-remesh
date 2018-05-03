@@ -236,6 +236,7 @@ void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map)
 
     viewer.data().clear();
     viewer.data().set_mesh(V_uv, F);
+    viewer.core.align_camera_center(V_uv);
     viewer.data().set_colors(color);
     viewer.data().show_texture = false;
     viewer.data().show_lines = false;
