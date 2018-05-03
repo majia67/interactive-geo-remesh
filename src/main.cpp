@@ -10,10 +10,10 @@
 #include <igl/gaussian_curvature.h>
 #include <Eigen/Core>
 
-#include "types.hpp"
-
 using namespace Eigen;
 using namespace std;
+
+typedef Matrix<unsigned char, Eigen::Dynamic, Eigen::Dynamic> MatrixXuc;
 
 MatrixXd V(0, 3);                //vertex array, #V x3
 MatrixXi F(0, 3);                //face array, #F x3
@@ -21,7 +21,7 @@ MatrixXd V_uv(0, 2);             //vertex array in the UV plane, #V x2
 
 VectorXd area_map;               //area map, #F x1
 VectorXd gaus_curv_map;          //gaussian curvature map, #V x1
-Buffer control_map;              //control map, #F x1
+MatrixXd control_map;            //control map, pixel width x height
 
 int num_of_samples;              //number of samples
 bool is_inverse_mode;            //inverse mode control
@@ -117,12 +117,15 @@ int main(int argc, char *argv[])
                     1, 1,
                     0, 1;
 
+                MatrixXuc K(control_map.rows(), control_map.cols());
+                K << (control_map * 255).cast<unsigned char>();
+
                 viewer.data().clear();
                 viewer.data().set_mesh(V, F);
                 viewer.data().set_uv(UV);
                 viewer.core.align_camera_center(V);
                 viewer.data().show_texture = true;
-                viewer.data().set_texture(control_map.R, control_map.G, control_map.B);
+                viewer.data().set_texture(K, K, K);
             }
         }
 
@@ -191,15 +194,24 @@ void calc_gaussian_curvature_map()
 
 void calc_control_map(igl::opengl::glfw::Viewer &viewer)
 {
-    Buffer temp;
+    const int width = 500;
+    const int height = 500;
 
+    MatrixXuc R(width, height);
+    MatrixXuc G(width, height);
+    MatrixXuc B(width, height);
+    MatrixXuc A(width, height);
+    MatrixXd temp(width, height);
+    control_map.resize(width, height);
+    
     render_map(viewer, area_map);
-    viewer.core.draw_buffer(viewer.data(), false, temp.R, temp.G, temp.B, temp.A);
-    control_map = temp;
+    viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
+    control_map = R.cast<double>() / 255.0;
 
     render_map(viewer, gaus_curv_map);
-    viewer.core.draw_buffer(viewer.data(), false, temp.R, temp.G, temp.B, temp.A);
-    control_map *= temp;
+    viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
+    temp = R.cast<double>() / 255.0;
+    control_map = control_map.array() * temp.array();
 }
 
 void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map)
