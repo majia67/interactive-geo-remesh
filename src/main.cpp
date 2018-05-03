@@ -29,6 +29,7 @@ bool is_inverse_mode;            //inverse mode control
 void reset_mesh(igl::opengl::glfw::Viewer &viewer);
 void harmonic_parameterization();
 void calc_area_map();
+void crop_control_map();
 void calc_gaussian_curvature_map();
 void calc_control_map(igl::opengl::glfw::Viewer &viewer);
 void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map);
@@ -98,24 +99,25 @@ int main(int argc, char *argv[])
             if (ImGui::Button("Control Map"))
             {
                 calc_control_map(viewer);
+                crop_control_map();
 
                 // Replace the mesh with a triangulated square
                 MatrixXd V(4, 3);
                 V <<
-                    -0.5, -0.5, 0,
-                    0.5, -0.5, 0,
-                    0.5, 0.5, 0,
-                    -0.5, 0.5, 0;
+                    0, 1, 0,
+                    0, 0, 0,
+                    1, 0, 0,
+                    1, 1, 0;
                 MatrixXi F(2, 3);
                 F <<
                     0, 1, 2,
                     2, 3, 0;
                 MatrixXd UV(4, 2);
                 UV <<
+                    0, 1,
                     0, 0,
                     1, 0,
-                    1, 1,
-                    0, 1;
+                    1, 1;
 
                 MatrixXuc K(control_map.rows(), control_map.cols());
                 K << (control_map * 255).cast<unsigned char>();
@@ -126,6 +128,9 @@ int main(int argc, char *argv[])
                 viewer.core.align_camera_center(V);
                 viewer.data().show_texture = true;
                 viewer.data().set_texture(K, K, K);
+                
+                MatrixXd color = MatrixXd::Ones(V.rows(), V.cols());
+                viewer.data().set_colors(color);
             }
         }
 
@@ -194,24 +199,34 @@ void calc_gaussian_curvature_map()
 
 void calc_control_map(igl::opengl::glfw::Viewer &viewer)
 {
-    const int width = 500;
-    const int height = 500;
+    const int width = (int) viewer.core.viewport(2);
+    const int height = (int) viewer.core.viewport(3);
 
     MatrixXuc R(width, height);
     MatrixXuc G(width, height);
     MatrixXuc B(width, height);
     MatrixXuc A(width, height);
     MatrixXd temp(width, height);
-    control_map.resize(width, height);
     
     render_map(viewer, area_map);
     viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
-    control_map = R.cast<double>() / 255.0;
+    temp = R.cast<double>() / 255.0;
 
     render_map(viewer, gaus_curv_map);
     viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
-    temp = R.cast<double>() / 255.0;
-    control_map = control_map.array() * temp.array();
+    temp = temp.array() * (R.cast<double>() / 255.0).array();
+
+    // Crop the boarder and only keep the map inside
+    int top = 0, bottom = A.rows() - 1, left = 0, right = A.cols() - 1;
+    
+    while (A.row(top).maxCoeff() == A.row(top).minCoeff()) top++;
+    while (A.row(bottom).maxCoeff() == A.row(bottom).minCoeff()) bottom--;
+    while (A.col(left).maxCoeff() == A.col(left).minCoeff()) left++;
+    while (A.col(right).maxCoeff() == A.col(right).minCoeff()) right--;
+
+    int rows = bottom - top + 1, cols = right - left + 1;
+    control_map.resize(rows, cols);
+    control_map = temp.block(top, left, rows, cols);
 }
 
 void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map)
@@ -224,6 +239,10 @@ void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map)
     viewer.data().set_colors(color);
     viewer.data().show_texture = false;
     viewer.data().show_lines = false;
+}
+
+void crop_control_map()
+{
 }
 
 void sampling()
