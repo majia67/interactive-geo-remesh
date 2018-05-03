@@ -26,6 +26,7 @@ Buffer control_map;              //control map, #F x1
 int num_of_samples;              //number of samples
 bool is_inverse_mode;            //inverse mode control
 
+void reset_mesh(igl::opengl::glfw::Viewer &viewer);
 void harmonic_parameterization();
 void calc_area_map();
 void calc_gaussian_curvature_map();
@@ -52,8 +53,7 @@ int main(int argc, char *argv[])
 
     // Plot the mesh
     igl::opengl::glfw::Viewer viewer;
-    viewer.data().clear();
-    viewer.data().set_mesh(V, F);
+    reset_mesh(viewer);
 
     // Setup the menu
     igl::opengl::glfw::imgui::ImGuiMenu menu;
@@ -63,10 +63,7 @@ int main(int argc, char *argv[])
     {
         if (ImGui::Button("Reset Mesh"))
         {
-            viewer.data().clear();
-
-            viewer.data().set_mesh(V, F);
-            viewer.core.align_camera_center(V, F);
+            reset_mesh(viewer);
         }
 
         ImGui::Checkbox("Inverse Mode", &is_inverse_mode);
@@ -77,12 +74,10 @@ int main(int argc, char *argv[])
             {
                 harmonic_parameterization();
 
+                viewer.data().clear();
                 viewer.data().set_mesh(V_uv, F);
                 viewer.data().set_uv(V_uv);
                 viewer.core.align_camera_center(V_uv, F);
-
-                // Recompute the normal in 2D plane
-                viewer.data().compute_normals();
             }
         }
 
@@ -145,6 +140,15 @@ int main(int argc, char *argv[])
     viewer.launch();
 }
 
+void reset_mesh(igl::opengl::glfw::Viewer &viewer)
+{
+    viewer.data().clear();
+
+    viewer.data().set_mesh(V, F);
+    viewer.core.align_camera_center(V, F);
+    viewer.data().show_texture = false;
+}
+
 void harmonic_parameterization()
 {
     // Find the open boundary
@@ -203,8 +207,11 @@ void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map)
     MatrixXd color;
     grayscale_jet(map, color);
 
+    viewer.data().clear();
     viewer.data().set_mesh(V_uv, F);
     viewer.data().set_colors(color);
+    viewer.data().show_texture = false;
+    viewer.data().show_lines = false;
 }
 
 void sampling()
