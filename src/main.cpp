@@ -10,6 +10,8 @@
 #include <igl/gaussian_curvature.h>
 #include <Eigen/Core>
 
+#include "varcoeffED.h"
+
 using namespace Eigen;
 using namespace std;
 
@@ -21,7 +23,8 @@ MatrixXd V_uv(0, 2);             //vertex array in the UV plane, #V x2
 
 VectorXd area_map;               //area map, #F x1
 VectorXd gaus_curv_map;          //gaussian curvature map, #V x1
-MatrixXd control_map;            //control map, pixel width x height
+MatrixXi control_map;            //control map, pixel width x height
+MatrixXi sampling_data;          //sampling result, pixel width x height
 
 int num_of_samples;              //number of samples
 bool is_inverse_mode;            //inverse mode control
@@ -29,10 +32,10 @@ bool is_inverse_mode;            //inverse mode control
 void reset_mesh(igl::opengl::glfw::Viewer &viewer);
 void harmonic_parameterization();
 void calc_area_map();
-void crop_control_map();
 void calc_gaussian_curvature_map();
 void calc_control_map(igl::opengl::glfw::Viewer &viewer);
 void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map);
+void render_pixel_img(igl::opengl::glfw::Viewer &viewer, MatrixXi &img);
 void sampling();
 void grayscale_jet(VectorXd &scalar_map, MatrixXd &color);
 
@@ -99,38 +102,7 @@ int main(int argc, char *argv[])
             if (ImGui::Button("Control Map"))
             {
                 calc_control_map(viewer);
-                crop_control_map();
-
-                // Replace the mesh with a triangulated square
-                MatrixXd V(4, 3);
-                V <<
-                    0, 1, 0,
-                    0, 0, 0,
-                    1, 0, 0,
-                    1, 1, 0;
-                MatrixXi F(2, 3);
-                F <<
-                    0, 1, 2,
-                    2, 3, 0;
-                MatrixXd UV(4, 2);
-                UV <<
-                    0, 1,
-                    0, 0,
-                    1, 0,
-                    1, 1;
-
-                MatrixXuc K(control_map.rows(), control_map.cols());
-                K << (control_map * 255).cast<unsigned char>();
-
-                viewer.data().clear();
-                viewer.data().set_mesh(V, F);
-                viewer.data().set_uv(UV);
-                viewer.core.align_camera_center(V);
-                viewer.data().show_texture = true;
-                viewer.data().set_texture(K, K, K);
-                
-                MatrixXd color = MatrixXd::Ones(V.rows(), V.cols());
-                viewer.data().set_colors(color);
+                render_pixel_img(viewer, control_map);
             }
         }
 
@@ -141,6 +113,7 @@ int main(int argc, char *argv[])
             if (ImGui::Button("Perform Sampling"))
             {
                 sampling();
+                render_pixel_img(viewer, sampling_data);
             }
         }
     };
@@ -210,11 +183,14 @@ void calc_control_map(igl::opengl::glfw::Viewer &viewer)
     
     render_map(viewer, area_map);
     viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
-    temp = R.cast<double>() / 255.0;
+    temp = R.cast<double>() / 255.0;    // Scale to 0 ~ 1
 
     render_map(viewer, gaus_curv_map);
     viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
     temp = temp.array() * (R.cast<double>() / 255.0).array();
+
+    // Rescale back to pixel intensity
+    temp *= 255.0;
 
     // Crop the boarder and only keep the map inside
     int top = 0, bottom = A.rows() - 1, left = 0, right = A.cols() - 1;
@@ -226,7 +202,7 @@ void calc_control_map(igl::opengl::glfw::Viewer &viewer)
 
     int rows = bottom - top + 1, cols = right - left + 1;
     control_map.resize(rows, cols);
-    control_map = temp.block(top, left, rows, cols);
+    control_map = temp.block(top, left, rows, cols).cast<int>();
 }
 
 void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map)
@@ -242,13 +218,44 @@ void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map)
     viewer.data().show_lines = false;
 }
 
-void crop_control_map()
+void render_pixel_img(igl::opengl::glfw::Viewer &viewer, MatrixXi &img)
 {
+    // Replace the mesh with a triangulated square
+    MatrixXd V(4, 3);
+    V <<
+        0, 1, 0,
+        0, 0, 0,
+        1, 0, 0,
+        1, 1, 0;
+    MatrixXi F(2, 3);
+    F <<
+        0, 1, 2,
+        2, 3, 0;
+    MatrixXd UV(4, 2);
+    UV <<
+        0, 1,
+        0, 0,
+        1, 0,
+        1, 1;
+
+    MatrixXuc K = img.cast<unsigned char>();
+
+    viewer.data().clear();
+    viewer.data().set_mesh(V, F);
+    viewer.data().set_uv(UV);
+    viewer.core.align_camera_center(V);
+    viewer.data().show_texture = true;
+    viewer.data().set_texture(K, K, K);
+
+    MatrixXd color = MatrixXd::Ones(V.rows(), V.cols());
+    viewer.data().set_colors(color);
 }
 
 void sampling()
 {
-    
+    sampling_data.resize(control_map.rows(), control_map.cols());
+    cout << control_map.row(0) << endl;
+    error_diffusion(control_map, sampling_data);
 }
 
 void grayscale_jet(VectorXd &scalar_map, MatrixXd &color)
