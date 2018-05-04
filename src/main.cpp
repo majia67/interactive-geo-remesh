@@ -222,6 +222,8 @@ void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map)
     viewer.data().set_colors(color);
     viewer.data().show_texture = false;
     viewer.data().show_lines = false;
+    viewer.data().V_material_specular.setZero();
+    viewer.data().F_material_specular.setZero();
 }
 
 void render_pixel_img(igl::opengl::glfw::Viewer &viewer, MatrixXi &img)
@@ -255,6 +257,9 @@ void render_pixel_img(igl::opengl::glfw::Viewer &viewer, MatrixXi &img)
 
     MatrixXd color = MatrixXd::Ones(V.rows(), V.cols());
     viewer.data().set_colors(color);
+
+    viewer.data().V_material_specular.setZero();
+    viewer.data().F_material_specular.setZero();
 }
 
 void sampling()
