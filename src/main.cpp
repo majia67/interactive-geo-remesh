@@ -265,7 +265,6 @@ void render_pixel_img(igl::opengl::glfw::Viewer &viewer, MatrixXi &img)
 void sampling()
 {
     sampling_data.resize(control_map.rows(), control_map.cols());
-    cout << control_map.row(0) << endl;
     error_diffusion(control_map, sampling_data);
 }
 
