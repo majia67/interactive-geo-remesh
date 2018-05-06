@@ -7,9 +7,13 @@
 #include <igl/harmonic.h>
 #include <igl/jet.h>
 #include <igl/gaussian_curvature.h>
+#include <igl/triangle/triangulate.h>
 #include <Eigen/Core>
 
 #include "varcoeffED.h"
+
+#define BLACK		0
+#define WHITE		255
 
 using namespace Eigen;
 using namespace std;
@@ -37,6 +41,7 @@ void calc_control_map(igl::opengl::glfw::Viewer &viewer);
 void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map);
 void render_pixel_img(igl::opengl::glfw::Viewer &viewer, MatrixXi &img);
 void sampling();
+void get_uv_coord_from_pixel_img(const MatrixXi &img, MatrixXd &UV, MatrixXi &E);
 void grayscale_jet(VectorXd &scalar_map, MatrixXd &color);
 
 int main(int argc, char *argv[])
@@ -116,6 +121,20 @@ int main(int argc, char *argv[])
                 sampling();
                 render_pixel_img(viewer, sampling_data);
             }
+        }
+
+        if (ImGui::Button("Triangulate"))
+        {
+            MatrixXd UV, H, V2;
+            MatrixXi E, F2;
+            get_uv_coord_from_pixel_img(sampling_data, UV, E);
+
+            igl::triangle::triangulate(UV, E, H, "a0.005q", V2, F2);
+
+            viewer.data().clear();
+            viewer.data().set_mesh(V2, F2);
+            viewer.core.align_camera_center(V2, F);
+            viewer.data().show_lines = true;
         }
     };
     
@@ -292,6 +311,72 @@ void sampling()
 {
     sampling_data.resize(control_map.rows(), control_map.cols());
     error_diffusion(control_map, sampling_data);
+}
+
+void get_uv_coord_from_pixel_img(const MatrixXi &img, MatrixXd &UV, MatrixXi &E)
+{
+    int num, count;
+    num = (img.array() == BLACK).count();
+    count = 0;
+    UV.resize(num, 2);
+
+    // Adding boundary points in counter-clockwise order
+    for (int c = 0; c < img.cols(); c++)
+    {
+        if (img(img.rows() - 1, c) == BLACK)
+        {
+            UV.row(count) << (double)c / (img.cols() - 1), 0.0;
+            count++;
+        }
+    }
+
+    for (int r = img.rows() - 2; r >= 0; r--)
+    {
+        if (img(r, img.cols() - 1) == BLACK)
+        {
+            UV.row(count) << 1.0, 1.0 - (double)r / (img.rows() - 1);
+            count++;
+        }
+    }
+
+    for (int c = img.cols() - 2; c >= 0; c--)
+    {
+        if (img(0, c) == BLACK)
+        {
+            UV.row(count) << (double)c / (img.cols() - 1), 1.0;
+            count++;
+        }
+    }
+
+    for (int r = 1; r < img.rows(); r++)
+    {
+        if (img(r, 0) == BLACK)
+        {
+            UV.row(count) << 0.0, 1.0 - (double)r / (img.rows() - 1);
+            count++;
+        }
+    }
+
+    // Generate the boundary edges
+    E.resize(count, 2);
+    for (int i = 0; i < count - 1; i++)
+    {
+        E.row(i) << i, i + 1;
+    }
+    E.row(count - 1) << count - 1, 0;
+
+    // Process the interior points
+    for (int r = 1; r < img.rows() - 1; r++)
+    {
+        for (int c = 1; c < img.cols() - 1; c++)
+        {
+            if (img(r, c) == BLACK)
+            {
+                UV.row(count) << (double)c / img.cols(), (double)r / img.rows();
+                count++;
+            }
+        }
+    }
 }
 
 void grayscale_jet(VectorXd &scalar_map, MatrixXd &color)

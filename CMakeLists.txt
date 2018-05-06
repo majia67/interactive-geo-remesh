@@ -22,7 +22,7 @@ option(LIBIGL_WITH_OPENGL_GLFW_IMGUI "Use ImGui"          ON)
 option(LIBIGL_WITH_PNG               "Use PNG"            OFF)
 option(LIBIGL_WITH_PYTHON            "Use Python"         OFF)
 option(LIBIGL_WITH_TETGEN            "Use Tetgen"         OFF)
-option(LIBIGL_WITH_TRIANGLE          "Use Triangle"       OFF)
+option(LIBIGL_WITH_TRIANGLE          "Use Triangle"       ON)
 option(LIBIGL_WITH_VIEWER            "Use OpenGL viewer"  ON)
 option(LIBIGL_WITH_XML               "Use XML"            OFF)
 
@@ -31,7 +31,7 @@ find_package(LIBIGL REQUIRED QUIET)
 # Add your project files
 file(GLOB SRCFILES src/main.cpp src/varcoeffED.cpp)
 add_executable(${PROJECT_NAME}_bin ${SRCFILES})
-target_link_libraries(${PROJECT_NAME}_bin igl::core igl::opengl igl::opengl_glfw igl::opengl_glfw_imgui)
+target_link_libraries(${PROJECT_NAME}_bin igl::core igl::opengl igl::opengl_glfw igl::opengl_glfw_imgui igl::triangle)
 
 # Put resource files into output directory
 file(COPY data DESTINATION ${CMAKE_BINARY_DIR})
