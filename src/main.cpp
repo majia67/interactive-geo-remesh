@@ -5,7 +5,6 @@
 #include <igl/opengl/glfw/imgui/ImGuiMenu.h>
 #include <igl/boundary_loop.h>
 #include <igl/harmonic.h>
-#include <igl/map_vertices_to_circle.h>
 #include <igl/jet.h>
 #include <igl/gaussian_curvature.h>
 #include <Eigen/Core>
@@ -30,6 +29,7 @@ int num_of_samples;              //number of samples
 bool is_inverse_mode;            //inverse mode control
 
 void reset_mesh(igl::opengl::glfw::Viewer &viewer);
+void map_vertices_to_rectangle(const Eigen::MatrixXd& V, const Eigen::VectorXi& bnd, Eigen::MatrixXd& UV);
 void harmonic_parameterization();
 void calc_area_map();
 void calc_gaussian_curvature_map();
@@ -138,10 +138,39 @@ void harmonic_parameterization()
 
     // Map the boundary to a circle, preserving edge proportions
     MatrixXd bnd_uv;
-    igl::map_vertices_to_circle(V, bnd, bnd_uv);
+    map_vertices_to_rectangle(V, bnd, bnd_uv);
 
     // Harmonic parametrization for the internal vertices
     igl::harmonic(V, F, bnd, bnd_uv, 1, V_uv);
+}
+
+void map_vertices_to_rectangle(
+    const Eigen::MatrixXd& V,
+    const Eigen::VectorXi& bnd,
+    Eigen::MatrixXd& UV)
+{
+    std::vector<double> len(bnd.size());
+    len[0] = 0.0;
+
+    for (int i = 1; i < bnd.size(); i++)
+    {
+        len[i] = len[i - 1] + (V.row(bnd[i - 1]) - V.row(bnd[i])).norm();
+    }
+    double total_len = len[len.size() - 1] + (V.row(bnd[0]) - V.row(bnd[bnd.size() - 1])).norm();
+
+    UV.resize(bnd.size(), 2);
+    for (int i = 0; i < bnd.size(); i++)
+    {
+        double frac = len[i] * 4.0 / total_len;
+        if (frac <= 1.)
+            UV.row(i) << 0.0, frac;
+        else if (frac <= 2.)
+            UV.row(i) << frac - 1.0, 1.0;
+        else if (frac <= 3.)
+            UV.row(i) << 1.0, 3.0 - frac;
+        else
+            UV.row(i) << 4.0 - frac, 0.0;
+    }
 }
 
 void calc_area_map()
