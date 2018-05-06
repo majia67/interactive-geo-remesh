@@ -82,6 +82,7 @@ int main(int argc, char *argv[])
                 viewer.data().set_mesh(V_uv, F);
                 viewer.data().set_uv(V_uv);
                 viewer.core.align_camera_center(V_uv, F);
+                viewer.data().show_lines = true;
             }
         }
 
@@ -128,6 +129,7 @@ void reset_mesh(igl::opengl::glfw::Viewer &viewer)
     viewer.data().set_mesh(V, F);
     viewer.core.align_camera_center(V, F);
     viewer.data().show_texture = false;
+    viewer.data().show_lines = true;
 }
 
 void harmonic_parameterization()
@@ -276,6 +278,7 @@ void render_pixel_img(igl::opengl::glfw::Viewer &viewer, MatrixXi &img)
     viewer.data().set_uv(UV);
     viewer.core.align_camera_center(V);
     viewer.data().show_texture = true;
+    viewer.data().show_lines = false;
     viewer.data().set_texture(K, K, K);
 
     MatrixXd color = MatrixXd::Ones(V.rows(), V.cols());
