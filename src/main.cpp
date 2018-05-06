@@ -221,12 +221,6 @@ void calc_control_map(igl::opengl::glfw::Viewer &viewer)
     // Rescale back to pixel intensity
     temp *= 255.0;
 
-    // Enforce pixels out of the map to be black
-    for (int r = 0; r < A.rows(); r++)
-        for (int c = 0; c < A.cols(); c++)
-            if (A(r, c) == 0)
-                temp(r, c) = 0;
-
     // Crop the boarder and only keep the map inside
     int top = 0, bottom = A.rows() - 1, left = 0, right = A.cols() - 1;
     
