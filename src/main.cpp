@@ -163,13 +163,13 @@ void map_vertices_to_rectangle(
     {
         double frac = len[i] * 4.0 / total_len;
         if (frac <= 1.)
-            UV.row(i) << 0.0, frac;
+            UV.row(i) << frac, 0.0;
         else if (frac <= 2.)
-            UV.row(i) << frac - 1.0, 1.0;
+            UV.row(i) << 1.0, frac - 1.0;
         else if (frac <= 3.)
-            UV.row(i) << 1.0, 3.0 - frac;
+            UV.row(i) << 3.0 - frac, 1.0;
         else
-            UV.row(i) << 4.0 - frac, 0.0;
+            UV.row(i) << 0.0, 4.0 - frac;
     }
 }
 
