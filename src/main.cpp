@@ -31,9 +31,17 @@ VectorXd gaus_curv_map;          //gaussian curvature map, #V x1
 MatrixXi control_map;            //control map, pixel width x height
 MatrixXi sampling_data;          //sampling result, pixel width x height
 
-int num_of_samples;              //number of samples
-bool is_inverse_mode;            //inverse mode control
-float scaling_factor;            //scaling factor for the control map
+struct Option
+{
+    // Geometry maps
+    bool is_inverse_mode;
+
+    // Control map
+    bool use_area_map;
+    bool use_mean_curv_map;
+    bool use_gaus_curv_map;
+    float scaling_factor;
+} options;
 
 void reset_mesh(igl::opengl::glfw::Viewer &viewer);
 void map_vertices_to_rectangle(const Eigen::MatrixXd& V, const Eigen::VectorXi& bnd, Eigen::MatrixXd& UV);
@@ -60,10 +68,12 @@ int main(int argc, char *argv[])
     igl::readOFF(argv[1], V, F);
     assert(V.rows() > 0);
 
-    // Initialize variables
-    num_of_samples = V.rows();
-    is_inverse_mode = true;
-    scaling_factor = 1.0;
+    // Initialize options
+    options.is_inverse_mode = true;
+    options.use_area_map = true;
+    options.use_mean_curv_map = true;
+    options.use_gaus_curv_map = false;
+    options.scaling_factor = 1.0;
 
     // Plot the mesh
     igl::opengl::glfw::Viewer viewer;
@@ -80,7 +90,7 @@ int main(int argc, char *argv[])
             reset_mesh(viewer);
         }
 
-        ImGui::Checkbox("Inverse Mode", &is_inverse_mode);
+        ImGui::Checkbox("Inverse Mode", &options.is_inverse_mode);
 
         if (ImGui::CollapsingHeader("Parameterization", ImGuiTreeNodeFlags_DefaultOpen))
         {
@@ -119,7 +129,10 @@ int main(int argc, char *argv[])
 
         if (ImGui::CollapsingHeader("Control Map", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            ImGui::InputFloat("scaling factor", &scaling_factor);
+            ImGui::Checkbox("Use area map", &options.use_area_map);
+            ImGui::Checkbox("Use mean curvature map", &options.use_mean_curv_map);
+            ImGui::Checkbox("Use Gaussian Curvature map", &options.use_gaus_curv_map);
+            ImGui::InputFloat("scaling factor", &options.scaling_factor);
 
             if (ImGui::Button("Generate Control Map"))
             {
@@ -261,21 +274,34 @@ void calc_control_map(igl::opengl::glfw::Viewer &viewer)
     MatrixXuc G(width, height);
     MatrixXuc B(width, height);
     MatrixXuc A(width, height);
-    MatrixXd temp(width, height);
+    MatrixXd temp = MatrixXd::Ones(width, height);
     
-    render_map(viewer, area_map);
-    viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
-    temp = R.cast<double>();
+    if (options.use_area_map)
+    {
+        render_map(viewer, area_map);
+        viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
+        temp = temp.array() * R.cast<double>().array();
+    }
 
-    render_map(viewer, mean_curv_map);
-    viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
-    temp = temp.array() * R.cast<double>().array();
+    if (options.use_mean_curv_map)
+    {
+        render_map(viewer, mean_curv_map);
+        viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
+        temp = temp.array() * R.cast<double>().array();
+    }
+
+    if (options.use_gaus_curv_map)
+    {
+        render_map(viewer, gaus_curv_map);
+        viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
+        temp = temp.array() * R.cast<double>().array();
+    }
 
     // Normalize the pixel intensity
     temp *= 255.0 / temp.maxCoeff();
 
     // Linear scale the intensity
-    temp *= scaling_factor;
+    temp *= options.scaling_factor;
     for (int i = 0; i < temp.size(); i++)
     {
         temp(i) -= 255.0 * (int)(temp(i) / 255.0);
@@ -428,7 +454,7 @@ void grayscale_jet(VectorXd &scalar_map, MatrixXd &color)
     for (int i = 0; i < scalar_map.size(); i++)
     {
         double norm = (scalar_map(i) - min_z) / denom;
-        if (is_inverse_mode)
+        if (options.is_inverse_mode)
         {
             norm = 1 - norm;
         }
