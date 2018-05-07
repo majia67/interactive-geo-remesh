@@ -33,6 +33,7 @@ MatrixXi sampling_data;          //sampling result, pixel width x height
 
 int num_of_samples;              //number of samples
 bool is_inverse_mode;            //inverse mode control
+float scaling_factor;            //scaling factor for the control map
 
 void reset_mesh(igl::opengl::glfw::Viewer &viewer);
 void map_vertices_to_rectangle(const Eigen::MatrixXd& V, const Eigen::VectorXi& bnd, Eigen::MatrixXd& UV);
@@ -62,6 +63,7 @@ int main(int argc, char *argv[])
     // Initialize variables
     num_of_samples = V.rows();
     is_inverse_mode = true;
+    scaling_factor = 1.0;
 
     // Plot the mesh
     igl::opengl::glfw::Viewer viewer;
@@ -113,8 +115,13 @@ int main(int argc, char *argv[])
                 calc_gaussian_curvature_map();
                 render_map(viewer, gaus_curv_map);
             }
+        }
 
-            if (ImGui::Button("Control Map"))
+        if (ImGui::CollapsingHeader("Control Map", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::InputFloat("scaling factor", &scaling_factor);
+
+            if (ImGui::Button("Generate Control Map"))
             {
                 calc_control_map(viewer);
                 render_pixel_img(viewer, control_map);
@@ -123,14 +130,24 @@ int main(int argc, char *argv[])
 
         if (ImGui::CollapsingHeader("Sampling", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            ImGui::InputInt("samples", &num_of_samples);
+            //ImGui::InputInt("samples", &num_of_samples);
 
             if (ImGui::Button("Perform Sampling"))
             {
-                int count = (control_map.array() == BLACK).count();
-                cout << count << endl;
-                control_map *= (double)num_of_samples / (control_map.rows() * control_map.cols());
                 cout << control_map.rows() << " x " << control_map.cols() << endl;
+
+                //int count = (control_map.array() < 127.5).count();
+                //cout << count << endl;
+
+                //control_map *= (double)num_of_samples / (control_map.rows() * control_map.cols());
+                //// Normalize the pixel intensity
+                //int max = control_map.maxCoeff();
+                //for (int i = 0; i < control_map.size(); i++)
+                //{
+                //    control_map(i) = (double)control_map(i) / max * 255;
+                //}
+                //cout << (control_map.array() < 127.5).count() << endl;
+
                 sampling();
                 render_pixel_img(viewer, sampling_data);
             }
@@ -244,21 +261,24 @@ void calc_control_map(igl::opengl::glfw::Viewer &viewer)
     MatrixXuc G(width, height);
     MatrixXuc B(width, height);
     MatrixXuc A(width, height);
-    MatrixXi temp(width, height);
+    MatrixXd temp(width, height);
     
     render_map(viewer, area_map);
     viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
-    temp = R.cast<int>();
+    temp = R.cast<double>();
 
     render_map(viewer, mean_curv_map);
     viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
-    temp = temp.array() * R.cast<int>().array();
+    temp = temp.array() * R.cast<double>().array();
 
     // Normalize the pixel intensity
-    int max = temp.maxCoeff();
+    temp *= 255.0 / temp.maxCoeff();
+
+    // Linear scale the intensity
+    temp *= scaling_factor;
     for (int i = 0; i < temp.size(); i++)
     {
-        temp(i) = (double)temp(i) / max * 255;
+        temp(i) -= 255.0 * (int)(temp(i) / 255.0);
     }
 
     // Crop the boarder and only keep the map inside
@@ -271,7 +291,7 @@ void calc_control_map(igl::opengl::glfw::Viewer &viewer)
 
     int rows = bottom - top + 1, cols = right - left + 1;
     control_map.resize(rows, cols);
-    control_map = temp.block(top, left, rows, cols);
+    control_map = temp.block(top, left, rows, cols).cast<int>();
 }
 
 void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map)
