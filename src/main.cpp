@@ -250,18 +250,15 @@ void calc_control_map(igl::opengl::glfw::Viewer &viewer)
     viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
     temp = R.cast<int>();
 
-    render_map(viewer, gaus_curv_map);
+    render_map(viewer, mean_curv_map);
     viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
     temp = temp.array() * R.cast<int>().array();
 
-    // Rescale back to pixel intensity
-    //temp *= 255.0;
+    // Normalize the pixel intensity
+    int max = temp.maxCoeff();
     for (int i = 0; i < temp.size(); i++)
     {
-        if (temp(i) > 255)
-        {
-            temp(i) = 255;
-        }
+        temp(i) = (double)temp(i) / max * 255;
     }
 
     // Crop the boarder and only keep the map inside
