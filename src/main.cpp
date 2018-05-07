@@ -247,17 +247,8 @@ void calc_control_map(igl::opengl::glfw::Viewer &viewer)
     control_map = temp.block(top, left, rows, cols).cast<int>();
 }
 
-void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &in_map)
+void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map)
 {
-    VectorXd map(in_map.size());
-
-    if (is_inverse_mode) {
-        map << 1 - in_map.array();
-    }
-    else {
-        map << in_map;
-    }
-
     MatrixXd color;
     grayscale_jet(map, color);
 
@@ -390,6 +381,10 @@ void grayscale_jet(VectorXd &scalar_map, MatrixXd &color)
     for (int i = 0; i < scalar_map.size(); i++)
     {
         double norm = (scalar_map(i) - min_z) / denom;
+        if (is_inverse_mode)
+        {
+            norm = 1 - norm;
+        }
         color(i, 0) = norm;
         color(i, 1) = norm;
         color(i, 2) = norm;
