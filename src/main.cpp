@@ -204,20 +204,12 @@ void calc_area_map()
 
     area_map.resize(F.rows());
     area_map << dblA3D / dblA2D;
-
-    if (is_inverse_mode) {
-        area_map = 1 - area_map.array();
-    }
 }
 
 void calc_gaussian_curvature_map()
 {
     // Calculate per-vertex discrete gaussian curvature
     igl::gaussian_curvature(V, F, gaus_curv_map);
-
-    if (is_inverse_mode) {
-        gaus_curv_map = 1 - gaus_curv_map.array();
-    }
 }
 
 void calc_control_map(igl::opengl::glfw::Viewer &viewer)
@@ -255,8 +247,17 @@ void calc_control_map(igl::opengl::glfw::Viewer &viewer)
     control_map = temp.block(top, left, rows, cols).cast<int>();
 }
 
-void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map)
+void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &in_map)
 {
+    VectorXd map(in_map.size());
+
+    if (is_inverse_mode) {
+        map << 1 - in_map.array();
+    }
+    else {
+        map << in_map;
+    }
+
     MatrixXd color;
     grayscale_jet(map, color);
 
