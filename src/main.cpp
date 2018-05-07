@@ -225,18 +225,25 @@ void calc_control_map(igl::opengl::glfw::Viewer &viewer)
     MatrixXuc G(width, height);
     MatrixXuc B(width, height);
     MatrixXuc A(width, height);
-    MatrixXd temp(width, height);
+    MatrixXi temp(width, height);
     
     render_map(viewer, area_map);
     viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
-    temp = R.cast<double>() / 255.0;    // Scale to 0 ~ 1
+    temp = R.cast<int>();
 
     render_map(viewer, gaus_curv_map);
     viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
-    temp = temp.array() * (R.cast<double>() / 255.0).array();
+    temp = temp.array() * R.cast<int>().array();
 
     // Rescale back to pixel intensity
-    temp *= 255.0;
+    //temp *= 255.0;
+    for (int i = 0; i < temp.size(); i++)
+    {
+        if (temp(i) > 255)
+        {
+            temp(i) = 255;
+        }
+    }
 
     // Crop the boarder and only keep the map inside
     int top = 0, bottom = A.rows() - 1, left = 0, right = A.cols() - 1;
@@ -248,7 +255,7 @@ void calc_control_map(igl::opengl::glfw::Viewer &viewer)
 
     int rows = bottom - top + 1, cols = right - left + 1;
     control_map.resize(rows, cols);
-    control_map = temp.block(top, left, rows, cols).cast<int>();
+    control_map = temp.block(top, left, rows, cols);
 }
 
 void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map)
