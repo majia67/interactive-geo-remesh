@@ -6,6 +6,7 @@
 #include <igl/boundary_loop.h>
 #include <igl/harmonic.h>
 #include <igl/jet.h>
+#include <igl/principal_curvature.h>
 #include <igl/gaussian_curvature.h>
 #include <igl/triangle/triangulate.h>
 #include <Eigen/Core>
@@ -25,6 +26,7 @@ MatrixXi F(0, 3);                //face array, #F x3
 MatrixXd V_uv(0, 2);             //vertex array in the UV plane, #V x2
 
 VectorXd area_map;               //area map, #F x1
+VectorXd mean_curv_map;
 VectorXd gaus_curv_map;          //gaussian curvature map, #V x1
 MatrixXi control_map;            //control map, pixel width x height
 MatrixXi sampling_data;          //sampling result, pixel width x height
@@ -36,6 +38,7 @@ void reset_mesh(igl::opengl::glfw::Viewer &viewer);
 void map_vertices_to_rectangle(const Eigen::MatrixXd& V, const Eigen::VectorXi& bnd, Eigen::MatrixXd& UV);
 void harmonic_parameterization();
 void calc_area_map();
+void calc_mean_curvature_map();
 void calc_gaussian_curvature_map();
 void calc_control_map(igl::opengl::glfw::Viewer &viewer);
 void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map);
@@ -97,6 +100,12 @@ int main(int argc, char *argv[])
             {
                 calc_area_map();
                 render_map(viewer, area_map);
+            }
+
+            if (ImGui::Button("Mean Curvature Map"))
+            {
+                calc_mean_curvature_map();
+                render_map(viewer, mean_curv_map);
             }
 
             if (ImGui::Button("Gaussian Curvature Map"))
@@ -208,6 +217,16 @@ void calc_area_map()
 
     area_map.resize(F.rows());
     area_map << dblA3D / dblA2D;
+}
+
+void calc_mean_curvature_map()
+{
+    MatrixXd PD1, PD2;
+    VectorXd PV1, PV2;
+    igl::principal_curvature(V, F, PD1, PD2, PV1, PV2);
+    
+    mean_curv_map.resize(V.rows());
+    mean_curv_map = (PV1.array() + PV2.array()) / 2;
 }
 
 void calc_gaussian_curvature_map()
