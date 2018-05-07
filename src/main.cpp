@@ -118,6 +118,10 @@ int main(int argc, char *argv[])
 
             if (ImGui::Button("Perform Sampling"))
             {
+                int count = (control_map.array() == BLACK).count();
+                cout << count << endl;
+                control_map *= (double)num_of_samples / (control_map.rows() * control_map.cols());
+                cout << control_map.rows() << " x " << control_map.cols() << endl;
                 sampling();
                 render_pixel_img(viewer, sampling_data);
             }
@@ -133,7 +137,7 @@ int main(int argc, char *argv[])
 
             viewer.data().clear();
             viewer.data().set_mesh(V2, F2);
-            viewer.core.align_camera_center(V2, F);
+            viewer.core.align_camera_center(V2, F2);
             viewer.data().show_lines = true;
         }
     };
@@ -214,8 +218,8 @@ void calc_gaussian_curvature_map()
 
 void calc_control_map(igl::opengl::glfw::Viewer &viewer)
 {
-    const int width = (int) viewer.core.viewport(2);
-    const int height = (int) viewer.core.viewport(3);
+    const int width = (int)viewer.core.viewport(2);
+    const int height = (int)viewer.core.viewport(3);
 
     MatrixXuc R(width, height);
     MatrixXuc G(width, height);
