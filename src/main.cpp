@@ -11,6 +11,10 @@
 #include <igl/gaussian_curvature.h>
 #include <igl/triangle/triangulate.h>
 #include <igl/barycentric_coordinates.h>
+#include <igl/triangle_triangle_adjacency.h>
+#include <igl/per_face_normals.h>
+#include <igl/slice.h>
+#include <igl/colon.h>
 #include <Eigen/Core>
 
 #include "varcoeffED.h"
@@ -42,8 +46,12 @@ struct Color
 
 struct Option
 {
+    // Feature lines
+    float dihedral_angle_thresholding;
+    bool overlay_feature_lines;
+
     // Geometry maps
-    bool is_inverse_mode;
+    bool use_inverse_mode;
 
     // Control map
     bool use_area_map;
@@ -65,6 +73,7 @@ MatrixXd V3(0, 3);                      //vertex array after reprojection, #V2 x
 MatrixXi F2(0, 3);                      //face array after triangulation, #F2 x3
 
 VectorXd PV1, PV2;               //principle curvatures
+MatrixXi FV;                     //feature line vertices
 
 VectorXd area_map;               //area map, #F x1
 VectorXd mean_curv_map;          //mean curvature map, #V x1
@@ -80,6 +89,8 @@ void calc_area_map();
 void calc_mean_curvature_map();
 void calc_gaussian_curvature_map();
 void calc_control_map(igl::opengl::glfw::Viewer &viewer);
+void calc_feature_lines();
+void overlay_feature_lines(igl::opengl::glfw::Viewer &viewer, int dim);
 void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map);
 void render_pixel_img(igl::opengl::glfw::Viewer &viewer, MatrixXi &img);
 void sampling();
@@ -99,7 +110,9 @@ int main(int argc, char *argv[])
     assert(V.rows() > 0);
 
     // Initialize options
-    options.is_inverse_mode = true;
+    options.dihedral_angle_thresholding = 30.0;
+    options.overlay_feature_lines = false;
+    options.use_inverse_mode = true;
     options.use_area_map = true;
     options.use_mean_curv_map = true;
     options.use_gaus_curv_map = false;
@@ -126,7 +139,19 @@ int main(int argc, char *argv[])
             reset_mesh(viewer);
         }
 
-        ImGui::Checkbox("Inverse Mode", &options.is_inverse_mode);
+        ImGui::Checkbox("Inverse Mode", &options.use_inverse_mode);
+
+        if (ImGui::CollapsingHeader("Features", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::InputFloat("dihedral angle", &options.dihedral_angle_thresholding);
+            ImGui::Checkbox("Overlay feature lines", &options.overlay_feature_lines);
+
+            if (ImGui::Button("Calculate Feature lines"))
+            {
+                calc_feature_lines();
+                cerr << "Num of feature lines: " << FV.rows() << endl;
+            }
+        }
 
         if (ImGui::CollapsingHeader("Parameterization", ImGuiTreeNodeFlags_DefaultOpen))
         {
@@ -140,6 +165,8 @@ int main(int argc, char *argv[])
                 viewer.data().set_uv(V_uv);
                 viewer.core.align_camera_center(V_uv, F);
                 viewer.data().show_lines = true;
+                
+                overlay_feature_lines(viewer, 2);
             }
         }
 
@@ -319,6 +346,71 @@ void reset_mesh(igl::opengl::glfw::Viewer &viewer)
     viewer.core.align_camera_center(V, F);
     viewer.data().show_texture = false;
     viewer.data().show_lines = true;
+
+    overlay_feature_lines(viewer, 3);
+}
+
+void calc_feature_lines()
+{
+    MatrixXi TT, TTi;
+    MatrixXd N;
+    igl::triangle_triangle_adjacency(F, TT, TTi);
+    igl::per_face_normals(V, F, N);
+
+    // Calculate feature lines
+    std::vector<int> feature_line;
+    double cos_threshold = std::cos(options.dihedral_angle_thresholding * M_PI / 180.0);
+    for (int i = 0; i < F.rows(); i++)
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            int f = TT(i, j);
+
+            // Avoid counting the same edge twice
+            if (i > f) continue;
+
+            if (f >= 0 && f < F.rows())
+            {
+                double cos_angle = N.row(i).dot(N.row(f));
+                if (cos_angle < cos_threshold)
+                {
+                    feature_line.push_back(i);
+                    feature_line.push_back(j);
+                }
+            }
+        }
+    }
+
+    // Generate the feature line vertex list
+    int num_edges = feature_line.size() / 2;
+    FV.resize(num_edges, 2);
+    for (int i = 0; i < num_edges; i++)
+    {
+        int f = feature_line[2 * i];
+        int v = feature_line[2 * i + 1];
+        FV.row(i) << F(f, v), F(f, (v + 1) % 3);
+    }
+}
+
+void overlay_feature_lines(igl::opengl::glfw::Viewer &viewer, int dim)
+{
+    if (options.overlay_feature_lines)
+    {
+        MatrixXd P1, P2;
+
+        if (dim == 3)
+        {
+            igl::slice(V, FV.col(0), igl::colon<int>(0, 2), P1);
+            igl::slice(V, FV.col(1), igl::colon<int>(0, 2), P2);
+        }
+        else
+        {
+            igl::slice(V_uv, FV.col(0), igl::colon<int>(0, 1), P1);
+            igl::slice(V_uv, FV.col(1), igl::colon<int>(0, 1), P2);
+        }
+
+        viewer.data().add_edges(P1, P2, Eigen::RowVector3d(1.0, 0.0, 0.0));
+    }
 }
 
 void harmonic_parameterization()
@@ -485,6 +577,8 @@ void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map)
     viewer.data().show_lines = false;
     viewer.data().V_material_specular.setZero();
     viewer.data().F_material_specular.setZero();
+
+    overlay_feature_lines(viewer, 2);
 }
 
 void render_pixel_img(igl::opengl::glfw::Viewer &viewer, MatrixXi &img)
@@ -606,7 +700,7 @@ void grayscale_jet(VectorXd &scalar_map, MatrixXd &color)
     for (int i = 0; i < scalar_map.size(); i++)
     {
         double norm = (scalar_map(i) - min_z) / denom;
-        if (options.is_inverse_mode)
+        if (options.use_inverse_mode)
         {
             norm = 1 - norm;
         }
