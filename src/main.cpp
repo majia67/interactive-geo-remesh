@@ -181,14 +181,12 @@ int main(int argc, char *argv[])
                 int total_pixels = control_map.rows() * control_map.cols();
                 double scale = (double)(total_pixels - options.num_of_samples) * WHITE / control_map.sum();
                 cout << "Scale: " << scale << endl;
-                //for (int i = 0; i < control_map.size(); i++)
-                //{
-                //    if (control_map(i) > WHITE) {
-                //        control_map(i) = WHITE;
-
-                //    }
-                //}
+                for (int i = 0; i < control_map.size(); i++)
+                {
+                    control_map(i) = (int)((double)control_map(i) * scale);
+                }
                 sampling();
+                cout << "Black pixels after sampling:" << (sampling_data.array() == BLACK).count() << endl;
                 render_pixel_img(viewer, sampling_data);
             }
         }
