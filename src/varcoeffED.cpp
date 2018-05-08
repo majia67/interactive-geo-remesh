@@ -298,7 +298,7 @@ void shift_carry_buffers()
 void distribute_error(int x, int y, t_carry diff, int dir, int input_level)
 {
     t_carry term_r, term_dl, term_d;
-    t_three_coefs coefs = var_coefs_tab[input_level];
+    t_three_coefs coefs = var_coefs_tab[input_level % 256];
 
     term_r = (t_carry)coefs.i_r*diff / (t_carry)coefs.i_sum;
     term_dl = (t_carry)coefs.i_dl*diff / (t_carry)coefs.i_sum;

@@ -50,6 +50,9 @@ struct Option
     bool use_mean_curv_map;
     bool use_gaus_curv_map;
     float scaling_factor;
+
+    // Sampling
+    int num_of_samples;
 } options;
 
 MatrixXd V(0, 3);                       //vertex array, #V x3
@@ -99,6 +102,7 @@ int main(int argc, char *argv[])
     options.use_mean_curv_map = true;
     options.use_gaus_curv_map = false;
     options.scaling_factor = 1.0;
+    options.num_of_samples = V.rows() / 10;
 
     // Plot the mesh
     igl::opengl::glfw::Viewer viewer;
@@ -169,24 +173,21 @@ int main(int argc, char *argv[])
 
         if (ImGui::CollapsingHeader("Sampling", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            //ImGui::InputInt("samples", &num_of_samples);
+            ImGui::InputInt("samples", &options.num_of_samples);
 
             if (ImGui::Button("Perform Sampling"))
             {
                 cout << control_map.rows() << " x " << control_map.cols() << endl;
-
-                //int count = (control_map.array() < 127.5).count();
-                //cout << count << endl;
-
-                //control_map *= (double)num_of_samples / (control_map.rows() * control_map.cols());
-                //// Normalize the pixel intensity
-                //int max = control_map.maxCoeff();
+                int total_pixels = control_map.rows() * control_map.cols();
+                double scale = (double)(total_pixels - options.num_of_samples) * WHITE / control_map.sum();
+                cout << "Scale: " << scale << endl;
                 //for (int i = 0; i < control_map.size(); i++)
                 //{
-                //    control_map(i) = (double)control_map(i) / max * 255;
-                //}
-                //cout << (control_map.array() < 127.5).count() << endl;
+                //    if (control_map(i) > WHITE) {
+                //        control_map(i) = WHITE;
 
+                //    }
+                //}
                 sampling();
                 render_pixel_img(viewer, sampling_data);
             }
