@@ -64,6 +64,8 @@ MatrixXd V2(0, 2);                      //vertex array after triangulation, #V2 
 MatrixXd V3(0, 3);                      //vertex array after reprojection, #V2 x3
 MatrixXi F2(0, 3);                      //face array after triangulation, #F2 x3
 
+VectorXd PV1, PV2;               //principle curvatures
+
 VectorXd area_map;               //area map, #F x1
 VectorXd mean_curv_map;          //mean curvature map, #V x1
 VectorXd gaus_curv_map;          //gaussian curvature map, #V x1
@@ -103,6 +105,11 @@ int main(int argc, char *argv[])
     options.use_gaus_curv_map = false;
     options.scaling_factor = 1.0;
     options.num_of_samples = V.rows() / 10;
+
+    // Calculate principle curvatures
+    cout << "Calculate principle curvatures" << endl;
+    MatrixXd PD1, PD2;
+    igl::principal_curvature(V, F, PD1, PD2, PV1, PV2);
 
     // Plot the mesh
     igl::opengl::glfw::Viewer viewer;
@@ -399,11 +406,7 @@ void calc_area_map()
 }
 
 void calc_mean_curvature_map()
-{
-    MatrixXd PD1, PD2;
-    VectorXd PV1, PV2;
-    igl::principal_curvature(V, F, PD1, PD2, PV1, PV2);
-    
+{   
     mean_curv_map.resize(V.rows());
     mean_curv_map = (PV1.array() + PV2.array()) / 2;
 }
