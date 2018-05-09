@@ -53,7 +53,7 @@ MatrixXi face_index_map;
 MatrixXd V2(0, 2);                      //vertex array after triangulation, #V2 x2
 MatrixXd V3(0, 3);                      //vertex array after reprojection, #V2 x3
 MatrixXi F2(0, 3);                      //face array after triangulation, #F2 x3
-MatrixXd bnd_uv;                        //uv coordinates of the boundary points
+MatrixXd bnd_uv(0, 2);                  //uv coordinates of the boundary points
 
 VectorXd PV1, PV2;               //principle curvatures
 MatrixXi FV;                     //feature line vertices
@@ -606,8 +606,8 @@ void sampling()
     // Forcing the boundary points on the final sampling map to be black
     for (int i = 0; i < bnd_uv.rows(); i++)
     {
-        int r = rows * bnd_uv(i, 1);
-        int c = cols * bnd_uv(i, 0);
+        int r = (rows - 1) * bnd_uv(i, 1);
+        int c = (cols - 1) * bnd_uv(i, 0);
         sampling_data(r, c) = BLACK;
     }
 
