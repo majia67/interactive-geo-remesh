@@ -27,23 +27,6 @@ using namespace std;
 
 typedef Matrix<unsigned char, Eigen::Dynamic, Eigen::Dynamic> MatrixXuc;
 
-struct Color
-{
-    int R;
-    int G;
-    int B;
-
-    Color(int r, int g, int b) : R(r), G(g), B(b) {}
-
-    bool operator==(const Color &c) const {
-        return R == c.R && G == c.G && B == c.B;
-    }
-
-    bool operator<(const Color &c) const {
-        return R < c.R || (R == c.R && G < c.G) || (R == c.R && G == c.G && B < c.B);
-    }
-};
-
 struct Option
 {
     // Feature lines
@@ -66,8 +49,7 @@ struct Option
 MatrixXd V(0, 3);                       //vertex array, #V x3
 MatrixXi F(0, 3);                       //face array, #F x3
 MatrixXd V_uv(0, 2);                    //vertex array in the UV plane, #V x2
-std::map<Color, int> face_idx_map;      //face index map, each face has a unique color
-MatrixXd UV_color;                      //color of the faces in UV plane
+MatrixXi face_index_map;                     
 MatrixXd V2(0, 2);                      //vertex array after triangulation, #V2 x2
 MatrixXd V3(0, 3);                      //vertex array after reprojection, #V2 x3
 MatrixXi F2(0, 3);                      //face array after triangulation, #F2 x3
@@ -159,7 +141,6 @@ int main(int argc, char *argv[])
             if (ImGui::Button("Harmonic"))
             {
                 harmonic_parameterization();
-                calc_face_index_map();
 
                 viewer.data().clear();
                 viewer.data().set_mesh(V_uv, F);
@@ -203,6 +184,9 @@ int main(int argc, char *argv[])
             {
                 calc_control_map(viewer);
                 render_pixel_img(viewer, control_map);
+
+                // Calculate the face index map after generating the control map
+                calc_face_index_map();
             }
         }
 
@@ -242,49 +226,43 @@ int main(int argc, char *argv[])
 
         if (ImGui::Button("Reproject"))
         {
-            //viewer.data().clear();
-            //viewer.data().set_mesh(V_uv, F);
-            //viewer.data().set_uv(V_uv);
-            //viewer.data().set_colors(UV_color);
-            //viewer.core.align_camera_center(V_uv, F);
-            //viewer.data().show_lines = false;
-            //viewer.data().show_texture = false;
-            //viewer.data().V_material_specular.setZero();
-            //viewer.data().F_material_specular.setZero();
-            //viewer.data().V_material_ambient.setZero();
-            //viewer.data().F_material_ambient.setZero();
+            //VectorXd dblA;
+            //igl::doublearea(V_uv, F, dblA);
 
-            //// Screen capturing
-            //const int width = (int)viewer.core.viewport(2);
-            //const int height = (int)viewer.core.viewport(3);
+            //// Calculate barycentric coordinates of the triangulated mesh
+            //// in the original parameterization
+            //MatrixXd TA, TB, TC, L;
+            //VectorXi corresponding_triangle = VectorXi::Zero(V2.rows());
+            //TA.resize(V2.rows(), 2);
+            //TB.resize(V2.rows(), 2);
+            //TC.resize(V2.rows(), 2);
+            //for (int i = 0; i < V2.rows(); i++)
+            //{
+            //    //int col = V2(i, 0) * (double)(cols - 1);
+            //    //int row = V2(i, 1) * (double)(rows - 1);
 
-            //MatrixXuc R(width, height);
-            //MatrixXuc G(width, height);
-            //MatrixXuc B(width, height);
-            //MatrixXuc A(width, height);
-            //viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
+            //    //Color c(R2(row, col), G2(row, col), B2(row, col));
+            //    //int f = face_idx_map.at(c);
+            //    for (int f = 0; f < F.rows(); f++)
+            //    {
+            //        Vector2d p0 = V_uv.row(F(f, 0));
+            //        Vector2d p1 = V_uv.row(F(f, 1));
+            //        Vector2d p2 = V_uv.row(F(f, 2));
+            //        Vector2d p = V2.row(i);
+            //        double s = 1 / dblA[f]*(p0[1]*p2[0] - p0[0]*p2[1] + (p2[1]-p0[1])*p[0] + (p0[0]-p2[0])*p[1]);
+            //        double t = 1 / dblA[f]*(p0[0]*p1[1] - p0[1]*p1[0] + (p0[1]-p1[1])*p[0] + (p1[0]-p0[0])*p[1]);
 
-            //// Crop the boarder
-            //int top = 0, bottom = A.rows() - 1, left = 0, right = A.cols() - 1;
+            //        if (s >= 0 && t >= 0 && (1 - s - t) >= 0)
+            //        {
+            //            TA.row(i) << V_uv.row(F(f, 0));
+            //            TB.row(i) << V_uv.row(F(f, 1));
+            //            TC.row(i) << V_uv.row(F(f, 2));
+            //            corresponding_triangle[i] = f;
+            //            break;
+            //        }
+            //    }
+            //}
 
-            //while (A.row(top).maxCoeff() == A.row(top).minCoeff()) top++;
-            //while (A.row(bottom).maxCoeff() == A.row(bottom).minCoeff()) bottom--;
-            //while (A.col(left).maxCoeff() == A.col(left).minCoeff()) left++;
-            //while (A.col(right).maxCoeff() == A.col(right).minCoeff()) right--;
-
-            //MatrixXi R2(width, height);
-            //MatrixXi G2(width, height);
-            //MatrixXi B2(width, height);
-            //int rows = bottom - top + 1, cols = right - left + 1;
-            //R2 = R.block(top, left, rows, cols).cast<int>();
-            //G2 = G.block(top, left, rows, cols).cast<int>();
-            //B2 = B.block(top, left, rows, cols).cast<int>();
-
-            VectorXd dblA;
-            igl::doublearea(V_uv, F, dblA);
-
-            // Calculate barycentric coordinates of the triangulated mesh
-            // in the original parameterization
             MatrixXd TA, TB, TC, L;
             VectorXi corresponding_triangle = VectorXi::Zero(V2.rows());
             TA.resize(V2.rows(), 2);
@@ -292,30 +270,15 @@ int main(int argc, char *argv[])
             TC.resize(V2.rows(), 2);
             for (int i = 0; i < V2.rows(); i++)
             {
-                //int col = V2(i, 0) * (double)(cols - 1);
-                //int row = V2(i, 1) * (double)(rows - 1);
-
-                //Color c(R2(row, col), G2(row, col), B2(row, col));
-                //int f = face_idx_map.at(c);
-                for (int f = 0; f < F.rows(); f++)
-                {
-                    Vector2d p0 = V_uv.row(F(f, 0));
-                    Vector2d p1 = V_uv.row(F(f, 1));
-                    Vector2d p2 = V_uv.row(F(f, 2));
-                    Vector2d p = V2.row(i);
-                    double s = 1 / dblA[f]*(p0[1]*p2[0] - p0[0]*p2[1] + (p2[1]-p0[1])*p[0] + (p0[0]-p2[0])*p[1]);
-                    double t = 1 / dblA[f]*(p0[0]*p1[1] - p0[1]*p1[0] + (p0[1]-p1[1])*p[0] + (p1[0]-p0[0])*p[1]);
-
-                    if (s >= 0 && t >= 0 && (1 - s - t) >= 0)
-                    {
-                        TA.row(i) << V_uv.row(F(f, 0));
-                        TB.row(i) << V_uv.row(F(f, 1));
-                        TC.row(i) << V_uv.row(F(f, 2));
-                        corresponding_triangle[i] = f;
-                        break;
-                    }
-                }
+                int col = V2(i, 0) * (double)(sampling_data.cols() - 1);
+                int row = V2(i, 1) * (double)(sampling_data.rows() - 1);
+                int f = face_index_map(row, col);
+                TA.row(i) << V_uv.row(F(f, 0));
+                TB.row(i) << V_uv.row(F(f, 1));
+                TC.row(i) << V_uv.row(F(f, 2));
+                corresponding_triangle[i] = f;
             }
+
             igl::barycentric_coordinates(V2, TA, TB, TC, L);
 
             // Reproject the 2D mesh into 3D
@@ -427,32 +390,46 @@ void harmonic_parameterization()
     igl::harmonic(V, F, bnd, bnd_uv, 1, V_uv);
 }
 
+#define F_01(x, y) (T(0,1)-T(1,1))*x + (T(1,0)-T(0,0))*y + T(0,0)*T(1,1) - T(1,0)*T(0,1)
+#define F_12(x, y) (T(1,1)-T(2,1))*x + (T(2,0)-T(1,0))*y + T(1,0)*T(2,1) - T(2,0)*T(1,1)
+#define F_20(x, y) (T(2,1)-T(0,1))*x + (T(0,0)-T(2,0))*y + T(2,0)*T(0,1) - T(0,0)*T(2,1)
+
 void calc_face_index_map()
 {
-    int r, g, b;
-    UV_color.resize(F.rows(), 3);
-    r = 0;
-    g = 0;
-    b = 0;
+    using namespace std;
 
+    face_index_map.resize(control_map.rows(), control_map.cols());
+    face_index_map.setZero();
     for (int f = 0; f < F.rows(); f++)
     {
-        UV_color.row(f) << (double)r / 255, (double)g / 255, (double)b / 255;
-        Color c(r, g, b);
-        face_idx_map[c] = f;
-
-        b += 1;
-        if (b == 256)
+        MatrixXd T;
+        igl::slice(V_uv, F.row(f), igl::colon<int>(0, 1), T);
+        T *= 255.0;
+        int x_min = min(floor(T(0, 0)), min(floor(T(1, 0)), floor(T(2, 0))));
+        int x_max = max(ceil(T(0, 0)), max(ceil(T(1, 0)), ceil(T(2, 0))));
+        int y_min = min(floor(T(0, 1)), min(floor(T(1, 1)), floor(T(2, 1))));
+        int y_max = max(ceil(T(0, 1)), max(ceil(T(1, 1)), ceil(T(2, 1))));
+        double f_alpha = F_12(T(0, 0), T(0, 1));
+        double f_beta = F_20(T(1, 0), T(1, 1));
+        double f_gamma = F_01(T(2, 0), T(2, 1));
+        for (int y = y_min; y <= y_max; y++)
         {
-            b = 0;
-            g += 1;
-            if (g == 256)
+            for (int x = x_min; x <= x_max; x++)
             {
-                g = 0;
-                r += 1;
+                double alpha = F_12(x, y) / f_alpha;
+                double beta = F_20(x, y) / f_beta;
+                double gamma = F_01(x, y) / f_gamma;
+                if (alpha >= 0 && beta >= 0 && gamma >= 0)
+                {
+                    if ((alpha > 0 || f_alpha * F_12(-1, -1) > 0) &&
+                        (beta > 0 || f_beta * F_20(-1, -1) > 0) &&
+                        (gamma > 0 || f_gamma * F_01(-1, -1) > 0))
+                    {
+                        face_index_map(x, y) = f;
+                    }
+                }
             }
         }
-        assert(r < 256);
     }
 }
 
@@ -584,14 +561,14 @@ void render_map(igl::opengl::glfw::Viewer &viewer, VectorXd &map)
 void render_pixel_img(igl::opengl::glfw::Viewer &viewer, MatrixXi &img)
 {
     // Replace the mesh with a triangulated square
-    MatrixXd V(4, 3);
-    V <<
+    MatrixXd VV(4, 3);
+    VV <<
         0, 1, 0,
         0, 0, 0,
         1, 0, 0,
         1, 1, 0;
-    MatrixXi F(2, 3);
-    F <<
+    MatrixXi FF(2, 3);
+    FF <<
         0, 1, 2,
         2, 3, 0;
     MatrixXd UV(4, 2);
@@ -604,14 +581,14 @@ void render_pixel_img(igl::opengl::glfw::Viewer &viewer, MatrixXi &img)
     MatrixXuc K = img.cast<unsigned char>();
 
     viewer.data().clear();
-    viewer.data().set_mesh(V, F);
+    viewer.data().set_mesh(VV, FF);
     viewer.data().set_uv(UV);
-    viewer.core.align_camera_center(V);
+    viewer.core.align_camera_center(VV);
     viewer.data().show_texture = true;
     viewer.data().show_lines = false;
     viewer.data().set_texture(K, K, K);
 
-    MatrixXd color = MatrixXd::Ones(V.rows(), V.cols());
+    MatrixXd color = MatrixXd::Ones(VV.rows(), 3);
     viewer.data().set_colors(color);
 
     viewer.data().V_material_specular.setZero();
