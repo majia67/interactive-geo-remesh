@@ -578,8 +578,8 @@ void sampling()
     // Forcing the boundary points on the final sampling map to be black
     for (int i = 0; i < bnd_uv.rows(); i++)
     {
-        int r = (rows - 1) * bnd_uv(i, 1);
-        int c = (cols - 1) * bnd_uv(i, 0);
+        int r = round((double)(rows - 1) * bnd_uv(i, 1));
+        int c = round((double)(cols - 1) * bnd_uv(i, 0));
         sampling_data(r, c) = BLACK;
     }
 }
@@ -724,8 +724,8 @@ void reproject_by_face_index()
     TC.resize(V2.rows(), 2);
     for (int i = 0; i < V2.rows(); i++)
     {
-        int col = V2(i, 0) * (double)(sampling_data.cols() - 1);
-        int row = V2(i, 1) * (double)(sampling_data.rows() - 1);
+        int col = round(V2(i, 0) * (double)(sampling_data.cols() - 1));
+        int row = round(V2(i, 1) * (double)(sampling_data.rows() - 1));
         int f = face_index_map(row, col);
         TA.row(i) << V_uv.row(F(f, 0));
         TB.row(i) << V_uv.row(F(f, 1));
