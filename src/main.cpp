@@ -1,5 +1,4 @@
 #include <iostream>
-#include <map>
 
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/readOFF.h>
@@ -49,11 +48,11 @@ struct Option
 MatrixXd V(0, 3);                       //vertex array, #V x3
 MatrixXi F(0, 3);                       //face array, #F x3
 MatrixXd V_uv(0, 2);                    //vertex array in the UV plane, #V x2
-MatrixXi face_index_map;                     
 MatrixXd V2(0, 2);                      //vertex array after triangulation, #V2 x2
 MatrixXd V3(0, 3);                      //vertex array after reprojection, #V2 x3
 MatrixXi F2(0, 3);                      //face array after triangulation, #F2 x3
 MatrixXd bnd_uv(0, 2);                  //uv coordinates of the boundary points
+MatrixXi face_index_map;                //index map for quick face lookup, #W x#H in pixels
 
 VectorXd PV1, PV2;               //principle curvatures
 MatrixXi FV;                     //feature line vertices
@@ -332,13 +331,15 @@ void harmonic_parameterization()
     igl::harmonic(V, F, bnd, bnd_uv, 1, V_uv);
 }
 
-#define F_01(x, y) (T(0,1)-T(1,1))*x + (T(1,0)-T(0,0))*y + T(0,0)*T(1,1) - T(1,0)*T(0,1)
-#define F_12(x, y) (T(1,1)-T(2,1))*x + (T(2,0)-T(1,0))*y + T(1,0)*T(2,1) - T(2,0)*T(1,1)
-#define F_20(x, y) (T(2,1)-T(0,1))*x + (T(0,0)-T(2,0))*y + T(2,0)*T(0,1) - T(0,0)*T(2,1)
-
 void calc_face_index_map()
 {
+#define F_01(x, y) (T(0,1)-T(1,1))*(double)x + (T(1,0)-T(0,0))*(double)y + T(0,0)*T(1,1) - T(1,0)*T(0,1)
+#define F_12(x, y) (T(1,1)-T(2,1))*(double)x + (T(2,0)-T(1,0))*(double)y + T(1,0)*T(2,1) - T(2,0)*T(1,1)
+#define F_20(x, y) (T(2,1)-T(0,1))*(double)x + (T(0,0)-T(2,0))*(double)y + T(2,0)*T(0,1) - T(0,0)*T(2,1)
     using namespace std;
+
+    int mrows = control_map.rows() - 1;
+    int mcols = control_map.cols() - 1;
 
     face_index_map.resize(control_map.rows(), control_map.cols());
     face_index_map.setZero();
@@ -346,17 +347,18 @@ void calc_face_index_map()
     {
         MatrixXd T;
         igl::slice(V_uv, F.row(f), igl::colon<int>(0, 1), T);
-        T.col(0) *= control_map.cols() - 1;
-        T.col(1) *= control_map.rows() - 1;
+        T.col(0) *= (double)mcols;
+        T.col(1) *= (double)mrows;
 
         int x_min = floor(min(T(0, 0), min(T(1, 0), T(2, 0))));
-        if (x_min < 0) x_min = 0;
         int x_max = ceil(max(T(0, 0), max(T(1, 0), T(2, 0))));
-        if (x_max >= control_map.cols()) x_max = control_map.cols() - 1;
         int y_min = floor(min(T(0, 1), min(T(1, 1), T(2, 1))));
-        if (y_min < 0) y_min = 0;
-        int y_max = max(T(0, 1), max(T(1, 1), T(2, 1)));
-        if (y_max >= control_map.rows()) y_max = control_map.rows() - 1;
+        int y_max = ceil(max(T(0, 1), max(T(1, 1), T(2, 1))));
+        
+        x_min = max(0, x_min);
+        x_max = min(mcols, x_max);
+        y_min = max(0, y_min);
+        y_max = min(mrows, y_max);
 
         double f_alpha = F_12(T(0, 0), T(0, 1));
         double f_beta = F_20(T(1, 0), T(1, 1));
