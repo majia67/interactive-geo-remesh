@@ -7,7 +7,6 @@
 #include <igl/harmonic.h>
 #include <igl/jet.h>
 #include <igl/principal_curvature.h>
-#include <igl/gaussian_curvature.h>
 #include <igl/triangle/triangulate.h>
 #include <igl/barycentric_coordinates.h>
 #include <igl/triangle_triangle_adjacency.h>
@@ -454,8 +453,8 @@ void calc_mean_curvature_map()
 
 void calc_gaussian_curvature_map()
 {
-    // Calculate per-vertex discrete gaussian curvature
-    igl::gaussian_curvature(V, F, gaus_curv_map);
+    gaus_curv_map.resize(V.rows());
+    gaus_curv_map = (PV1.array() * PV2.array());
 }
 
 void calc_control_map(igl::opengl::glfw::Viewer &viewer)
