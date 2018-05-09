@@ -79,6 +79,8 @@ void render_pixel_img(igl::opengl::glfw::Viewer &viewer, MatrixXi &img);
 void sampling();
 void get_uv_coord_from_pixel_img(const MatrixXi &img, MatrixXd &UV, MatrixXi &E);
 void grayscale_jet(VectorXd &scalar_map, MatrixXd &color);
+void reproject_by_search();
+void reproject_by_face_index();
 
 int main(int argc, char *argv[])
 {
@@ -226,68 +228,8 @@ int main(int argc, char *argv[])
 
         if (ImGui::Button("Reproject"))
         {
-            //VectorXd dblA;
-            //igl::doublearea(V_uv, F, dblA);
-
-            //// Calculate barycentric coordinates of the triangulated mesh
-            //// in the original parameterization
-            //MatrixXd TA, TB, TC, L;
-            //VectorXi corresponding_triangle = VectorXi::Zero(V2.rows());
-            //TA.resize(V2.rows(), 2);
-            //TB.resize(V2.rows(), 2);
-            //TC.resize(V2.rows(), 2);
-            //for (int i = 0; i < V2.rows(); i++)
-            //{
-            //    //int col = V2(i, 0) * (double)(cols - 1);
-            //    //int row = V2(i, 1) * (double)(rows - 1);
-
-            //    //Color c(R2(row, col), G2(row, col), B2(row, col));
-            //    //int f = face_idx_map.at(c);
-            //    for (int f = 0; f < F.rows(); f++)
-            //    {
-            //        Vector2d p0 = V_uv.row(F(f, 0));
-            //        Vector2d p1 = V_uv.row(F(f, 1));
-            //        Vector2d p2 = V_uv.row(F(f, 2));
-            //        Vector2d p = V2.row(i);
-            //        double s = 1 / dblA[f]*(p0[1]*p2[0] - p0[0]*p2[1] + (p2[1]-p0[1])*p[0] + (p0[0]-p2[0])*p[1]);
-            //        double t = 1 / dblA[f]*(p0[0]*p1[1] - p0[1]*p1[0] + (p0[1]-p1[1])*p[0] + (p1[0]-p0[0])*p[1]);
-
-            //        if (s >= 0 && t >= 0 && (1 - s - t) >= 0)
-            //        {
-            //            TA.row(i) << V_uv.row(F(f, 0));
-            //            TB.row(i) << V_uv.row(F(f, 1));
-            //            TC.row(i) << V_uv.row(F(f, 2));
-            //            corresponding_triangle[i] = f;
-            //            break;
-            //        }
-            //    }
-            //}
-
-            MatrixXd TA, TB, TC, L;
-            VectorXi corresponding_triangle = VectorXi::Zero(V2.rows());
-            TA.resize(V2.rows(), 2);
-            TB.resize(V2.rows(), 2);
-            TC.resize(V2.rows(), 2);
-            for (int i = 0; i < V2.rows(); i++)
-            {
-                int col = V2(i, 0) * (double)(sampling_data.cols() - 1);
-                int row = V2(i, 1) * (double)(sampling_data.rows() - 1);
-                int f = face_index_map(row, col);
-                TA.row(i) << V_uv.row(F(f, 0));
-                TB.row(i) << V_uv.row(F(f, 1));
-                TC.row(i) << V_uv.row(F(f, 2));
-                corresponding_triangle[i] = f;
-            }
-
-            igl::barycentric_coordinates(V2, TA, TB, TC, L);
-
-            // Reproject the 2D mesh into 3D
-            V3.resize(V2.rows(), 3);
-            for (int i = 0; i < V2.rows(); i++)
-            {
-                int f = corresponding_triangle[i];
-                V3.row(i) = V.row(F(f, 0)) * L(i, 0) + V.row(F(f, 1)) * L(i, 1) + V.row(F(f, 2)) * L(i, 2);
-            }
+            //reproject_by_search();
+            reproject_by_face_index();
 
             // View the new mesh
             viewer.data().clear();
@@ -404,11 +346,18 @@ void calc_face_index_map()
     {
         MatrixXd T;
         igl::slice(V_uv, F.row(f), igl::colon<int>(0, 1), T);
-        T *= 255.0;
-        int x_min = min(floor(T(0, 0)), min(floor(T(1, 0)), floor(T(2, 0))));
-        int x_max = max(ceil(T(0, 0)), max(ceil(T(1, 0)), ceil(T(2, 0))));
-        int y_min = min(floor(T(0, 1)), min(floor(T(1, 1)), floor(T(2, 1))));
-        int y_max = max(ceil(T(0, 1)), max(ceil(T(1, 1)), ceil(T(2, 1))));
+        T.col(0) *= control_map.cols() - 1;
+        T.col(1) *= control_map.rows() - 1;
+
+        int x_min = floor(min(T(0, 0), min(T(1, 0), T(2, 0))));
+        if (x_min < 0) x_min = 0;
+        int x_max = ceil(max(T(0, 0), max(T(1, 0), T(2, 0))));
+        if (x_max >= control_map.cols()) x_max = control_map.cols() - 1;
+        int y_min = floor(min(T(0, 1), min(T(1, 1), T(2, 1))));
+        if (y_min < 0) y_min = 0;
+        int y_max = max(T(0, 1), max(T(1, 1), T(2, 1)));
+        if (y_max >= control_map.rows()) y_max = control_map.rows() - 1;
+
         double f_alpha = F_12(T(0, 0), T(0, 1));
         double f_beta = F_20(T(1, 0), T(1, 1));
         double f_gamma = F_01(T(2, 0), T(2, 1));
@@ -421,12 +370,12 @@ void calc_face_index_map()
                 double gamma = F_01(x, y) / f_gamma;
                 if (alpha >= 0 && beta >= 0 && gamma >= 0)
                 {
-                    if ((alpha > 0 || f_alpha * F_12(-1, -1) > 0) &&
-                        (beta > 0 || f_beta * F_20(-1, -1) > 0) &&
-                        (gamma > 0 || f_gamma * F_01(-1, -1) > 0))
-                    {
-                        face_index_map(x, y) = f;
-                    }
+                    //if ((alpha > 0 || f_alpha * F_12(-1, -1) > 0) &&
+                    //    (beta > 0 || f_beta * F_20(-1, -1) > 0) &&
+                    //    (gamma > 0 || f_gamma * F_01(-1, -1) > 0))
+                    //{
+                        face_index_map(y, x) = f;
+                    //}
                 }
             }
         }
@@ -610,12 +559,6 @@ void sampling()
         int c = (cols - 1) * bnd_uv(i, 0);
         sampling_data(r, c) = BLACK;
     }
-
-    // Forcing the four rectangle vertices to be black
-    sampling_data(0, 0) = BLACK;
-    sampling_data(0, cols - 1) = BLACK;
-    sampling_data(rows - 1, 0) = BLACK;
-    sampling_data(rows - 1, cols - 1) = BLACK;
 }
 
 void get_uv_coord_from_pixel_img(const MatrixXi &img, MatrixXd &UV, MatrixXi &E)
@@ -701,5 +644,79 @@ void grayscale_jet(VectorXd &scalar_map, MatrixXd &color)
         color(i, 0) = norm;
         color(i, 1) = norm;
         color(i, 2) = norm;
+    }
+}
+
+void reproject_by_search()
+{
+    VectorXd dblA;
+    igl::doublearea(V_uv, F, dblA);
+
+    // Calculate barycentric coordinates of the triangulated mesh
+    // in the original parameterization
+    MatrixXd TA, TB, TC, L;
+    VectorXi corresponding_triangle = VectorXi::Zero(V2.rows());
+    TA.resize(V2.rows(), 2);
+    TB.resize(V2.rows(), 2);
+    TC.resize(V2.rows(), 2);
+    for (int i = 0; i < V2.rows(); i++)
+    {
+        for (int f = 0; f < F.rows(); f++)
+        {
+            Vector2d p0 = V_uv.row(F(f, 0));
+            Vector2d p1 = V_uv.row(F(f, 1));
+            Vector2d p2 = V_uv.row(F(f, 2));
+            Vector2d p = V2.row(i);
+            double s = 1 / dblA[f] * (p0[1] * p2[0] - p0[0] * p2[1] + (p2[1] - p0[1])*p[0] + (p0[0] - p2[0])*p[1]);
+            double t = 1 / dblA[f] * (p0[0] * p1[1] - p0[1] * p1[0] + (p0[1] - p1[1])*p[0] + (p1[0] - p0[0])*p[1]);
+
+            if (s >= 0 && t >= 0 && (1 - s - t) >= 0)
+            {
+                TA.row(i) << V_uv.row(F(f, 0));
+                TB.row(i) << V_uv.row(F(f, 1));
+                TC.row(i) << V_uv.row(F(f, 2));
+                corresponding_triangle[i] = f;
+                break;
+            }
+        }
+    }
+
+    igl::barycentric_coordinates(V2, TA, TB, TC, L);
+
+    // Reproject the 2D mesh into 3D
+    V3.resize(V2.rows(), 3);
+    for (int i = 0; i < V2.rows(); i++)
+    {
+        int f = corresponding_triangle[i];
+        V3.row(i) = V.row(F(f, 0)) * L(i, 0) + V.row(F(f, 1)) * L(i, 1) + V.row(F(f, 2)) * L(i, 2);
+    }
+}
+
+void reproject_by_face_index()
+{
+    MatrixXd TA, TB, TC, L;
+    VectorXi corresponding_triangle = VectorXi::Zero(V2.rows());
+    TA.resize(V2.rows(), 2);
+    TB.resize(V2.rows(), 2);
+    TC.resize(V2.rows(), 2);
+    for (int i = 0; i < V2.rows(); i++)
+    {
+        int col = V2(i, 0) * (double)(sampling_data.cols() - 1);
+        int row = V2(i, 1) * (double)(sampling_data.rows() - 1);
+        int f = face_index_map(row, col);
+        TA.row(i) << V_uv.row(F(f, 0));
+        TB.row(i) << V_uv.row(F(f, 1));
+        TC.row(i) << V_uv.row(F(f, 2));
+        corresponding_triangle[i] = f;
+    }
+
+    igl::barycentric_coordinates(V2, TA, TB, TC, L);
+
+    // Reproject the 2D mesh into 3D
+    V3.resize(V2.rows(), 3);
+    for (int i = 0; i < V2.rows(); i++)
+    {
+        int f = corresponding_triangle[i];
+        V3.row(i) = V.row(F(f, 0)) * L(i, 0) + V.row(F(f, 1)) * L(i, 1) + V.row(F(f, 2)) * L(i, 2);
     }
 }
