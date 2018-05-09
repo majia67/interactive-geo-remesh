@@ -342,7 +342,7 @@ void calc_face_index_map()
     int mcols = control_map.cols() - 1;
 
     face_index_map.resize(control_map.rows(), control_map.cols());
-    face_index_map.setZero();
+    face_index_map.fill(-1);
     for (int f = 0; f < F.rows(); f++)
     {
         MatrixXd T;
@@ -372,12 +372,33 @@ void calc_face_index_map()
                 double gamma = F_01(x, y) / f_gamma;
                 if (alpha >= 0 && beta >= 0 && gamma >= 0)
                 {
-                    //if ((alpha > 0 || f_alpha * F_12(-1, -1) > 0) &&
-                    //    (beta > 0 || f_beta * F_20(-1, -1) > 0) &&
-                    //    (gamma > 0 || f_gamma * F_01(-1, -1) > 0))
-                    //{
+                    if ((alpha > 0 || f_alpha * F_12(-1, -1) > 0) &&
+                        (beta > 0 || f_beta * F_20(-1, -1) > 0) &&
+                        (gamma > 0 || f_gamma * F_01(-1, -1) > 0))
+                    {
                         face_index_map(y, x) = f;
-                    //}
+                    }
+                }
+            }
+        }
+    }
+
+    // Fill the pixel with no face mapping to an adjacent face or 0
+    // (ideally it should be the geometrically closest face)
+    for (int r = 0; r <= mrows; r++)
+    {
+        for (int c = 0; c <= mcols; c++)
+        {
+            if (face_index_map(r, c) == -1)
+            {
+                if (r > 0) {
+                    face_index_map(r, c) = face_index_map(r - 1, c);
+                }
+                else if (c > 0) {
+                    face_index_map(r, c) = face_index_map(r, c - 1);
+                }
+                else {
+                    face_index_map(r, c) = 0;
                 }
             }
         }
