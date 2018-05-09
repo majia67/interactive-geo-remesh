@@ -71,6 +71,7 @@ MatrixXd UV_color;                      //color of the faces in UV plane
 MatrixXd V2(0, 2);                      //vertex array after triangulation, #V2 x2
 MatrixXd V3(0, 3);                      //vertex array after reprojection, #V2 x3
 MatrixXi F2(0, 3);                      //face array after triangulation, #F2 x3
+MatrixXd bnd_uv;                        //uv coordinates of the boundary points
 
 VectorXd PV1, PV2;               //principle curvatures
 MatrixXi FV;                     //feature line vertices
@@ -285,7 +286,7 @@ int main(int argc, char *argv[])
             // Calculate barycentric coordinates of the triangulated mesh
             // in the original parameterization
             MatrixXd TA, TB, TC, L;
-            VectorXi corresponding_triangle(V2.rows());
+            VectorXi corresponding_triangle = VectorXi::Zero(V2.rows());
             TA.resize(V2.rows(), 2);
             TB.resize(V2.rows(), 2);
             TC.resize(V2.rows(), 2);
@@ -420,7 +421,6 @@ void harmonic_parameterization()
     igl::boundary_loop(F, bnd);
 
     // Map the boundary to a circle, preserving edge proportions
-    MatrixXd bnd_uv;
     map_vertices_to_rectangle(V, bnd, bnd_uv);
 
     // Harmonic parametrization for the internal vertices
@@ -620,8 +620,25 @@ void render_pixel_img(igl::opengl::glfw::Viewer &viewer, MatrixXi &img)
 
 void sampling()
 {
-    sampling_data.resize(control_map.rows(), control_map.cols());
+    int rows = control_map.rows();
+    int cols = control_map.cols();
+
+    sampling_data.resize(rows, cols);
     error_diffusion(control_map, sampling_data);
+
+    // Forcing the boundary points on the final sampling map to be black
+    for (int i = 0; i < bnd_uv.rows(); i++)
+    {
+        int r = rows * bnd_uv(i, 1);
+        int c = cols * bnd_uv(i, 0);
+        sampling_data(r, c) = BLACK;
+    }
+
+    // Forcing the four rectangle vertices to be black
+    sampling_data(0, 0) = BLACK;
+    sampling_data(0, cols - 1) = BLACK;
+    sampling_data(rows - 1, 0) = BLACK;
+    sampling_data(rows - 1, cols - 1) = BLACK;
 }
 
 void get_uv_coord_from_pixel_img(const MatrixXi &img, MatrixXd &UV, MatrixXi &E)
