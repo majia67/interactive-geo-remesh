@@ -285,8 +285,8 @@ t_three_coefs var_coefs_tab[256] = {
     13,     0,     5,    18,     /*  254 */
     13,     0,     5,    18 };    /*  255 */
 
-#define SET_CARRY_0(x,val) { carry_line_0[x] += (t_carry) val; }
-#define SET_CARRY_1(x,val) { carry_line_1[x] += (t_carry) val; }
+#define SET_CARRY_0(x,val) { if (x >= 0 && x < carry_line_0.size()) carry_line_0[x] += (t_carry) val; }
+#define SET_CARRY_1(x,val) { if (x >= 0 && x < carry_line_1.size()) carry_line_1[x] += (t_carry) val; }
 #define RESET_CARRY_LINE(carry_line) { std::fill(carry_line.begin(), carry_line.end(), 0.0); }
 
 void shift_carry_buffers()
