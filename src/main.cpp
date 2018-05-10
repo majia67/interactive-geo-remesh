@@ -62,7 +62,7 @@ VectorXd gaus_curv_map;          //gaussian curvature map, #V x1
 MatrixXi control_map;            //control map, pixel width x height
 MatrixXi sampling_data;          //sampling result, pixel width x height
 
-void reset_mesh(igl::opengl::glfw::Viewer &viewer);
+void reset_mesh(igl::opengl::glfw::Viewer &viewer, MatrixXd &V, MatrixXi &F);
 void map_vertices_to_rectangle(const Eigen::MatrixXd& V, const Eigen::VectorXi& bnd, Eigen::MatrixXd& UV);
 void harmonic_parameterization();
 void calc_face_index_map();
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 
     // Plot the mesh
     igl::opengl::glfw::Viewer viewer;
-    reset_mesh(viewer);
+    reset_mesh(viewer, V, F);
 
     // Setup the menu
     igl::opengl::glfw::imgui::ImGuiMenu menu;
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
     {
         if (ImGui::Button("Reset Mesh"))
         {
-            reset_mesh(viewer);
+            reset_mesh(viewer, V, F);
         }
 
         ImGui::Checkbox("Inverse Mode", &options.use_inverse_mode);
@@ -142,11 +142,8 @@ int main(int argc, char *argv[])
             {
                 harmonic_parameterization();
 
-                viewer.data().clear();
-                viewer.data().set_mesh(V_uv, F);
+                reset_mesh(viewer, V_uv, F);
                 viewer.data().set_uv(V_uv);
-                viewer.core.align_camera_center(V_uv, F);
-                viewer.data().show_lines = true;
                 
                 overlay_feature_lines(viewer, 2);
             }
@@ -184,6 +181,7 @@ int main(int argc, char *argv[])
             {
                 calc_control_map(viewer);
                 render_pixel_img(viewer, control_map);
+                cout << "Control map size: " << control_map.rows() << " x " << control_map.cols() << endl;
 
                 // Calculate the face index map after generating the control map
                 calc_face_index_map();
@@ -196,17 +194,10 @@ int main(int argc, char *argv[])
 
             if (ImGui::Button("Perform Sampling"))
             {
-                cout << control_map.rows() << " x " << control_map.cols() << endl;
-                int total_pixels = control_map.rows() * control_map.cols();
-                double scale = (double)(total_pixels - options.num_of_samples) * WHITE / control_map.sum();
-                cout << "Scale: " << scale << endl;
-                for (int i = 0; i < control_map.size(); i++)
-                {
-                    control_map(i) = (int)((double)control_map(i) * scale);
-                }
                 sampling();
-                cout << "Black pixels after sampling:" << (sampling_data.array() == BLACK).count() << endl;
                 render_pixel_img(viewer, sampling_data);
+
+                cout << "Black pixels after sampling:" << (sampling_data.array() == BLACK).count() << endl;
             }
         }
 
@@ -217,41 +208,20 @@ int main(int argc, char *argv[])
                 MatrixXd UV, H;
                 MatrixXi E;
                 get_uv_coord_from_pixel_img(sampling_data, UV, E);
-
                 igl::triangle::triangulate(UV, E, H, "a0.005q", V2, F2);
-
-                viewer.data().clear();
-                viewer.data().set_mesh(V2, F2);
-                viewer.core.align_camera_center(V2, F2);
-                viewer.data().show_lines = true;
+                reset_mesh(viewer, V2, F2);
             }
 
             if (ImGui::Button("Reproject (fast)"))
             {
-                //reproject_by_search();
                 reproject_by_face_index();
-
-                // View the new mesh
-                viewer.data().clear();
-
-                viewer.data().set_mesh(V3, F2);
-                viewer.core.align_camera_center(V3, F2);
-                viewer.data().show_texture = false;
-                viewer.data().show_lines = true;
+                reset_mesh(viewer, V3, F2);
             }
 
             if (ImGui::Button("Reproject (accurate)"))
             {
-                //reproject_by_search();
                 reproject_by_search();
-
-                // View the new mesh
-                viewer.data().clear();
-
-                viewer.data().set_mesh(V3, F2);
-                viewer.core.align_camera_center(V3, F2);
-                viewer.data().show_texture = false;
-                viewer.data().show_lines = true;
+                reset_mesh(viewer, V3, F2);
             }
         }
     };
@@ -259,7 +229,7 @@ int main(int argc, char *argv[])
     viewer.launch();
 }
 
-void reset_mesh(igl::opengl::glfw::Viewer &viewer)
+void reset_mesh(igl::opengl::glfw::Viewer &viewer, MatrixXd &V, MatrixXi &F)
 {
     viewer.data().clear();
 
@@ -587,6 +557,15 @@ void sampling()
 {
     int rows = control_map.rows();
     int cols = control_map.cols();
+
+    // Scale the control map so its total intensity equals the result image's
+    int total_pixels = rows * cols;
+    double scale = (double)(total_pixels - options.num_of_samples) * WHITE / control_map.sum();
+    cout << "Sampling scale: " << scale << endl;
+    for (int i = 0; i < control_map.size(); i++)
+    {
+        control_map(i) = (int)((double)control_map(i) * scale);
+    }
 
     sampling_data.resize(rows, cols);
     error_diffusion(control_map, sampling_data);
