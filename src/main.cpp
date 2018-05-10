@@ -618,7 +618,7 @@ void get_uv_coord_from_pixel_img(const MatrixXi &img, MatrixXd &UV, MatrixXi &E)
         }
     }
 
-    for (int r = 1; r < img.rows(); r++)
+    for (int r = 1; r < img.rows() - 1; r++)
     {
         if (img(r, 0) == BLACK)
         {
