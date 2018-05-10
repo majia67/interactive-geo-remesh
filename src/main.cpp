@@ -148,8 +148,6 @@ int main(int argc, char *argv[])
 
                 reset_mesh(viewer, V_uv, F);
                 viewer.data().set_uv(V_uv);
-                
-                overlay_feature_lines(viewer, 2);
             }
         }
 
@@ -246,7 +244,7 @@ void reset_mesh(igl::opengl::glfw::Viewer &viewer, MatrixXd &V, MatrixXi &F)
     viewer.core.model_translation << 0, 0, 0;
     viewer.core.align_camera_center(V, F);
 
-    overlay_feature_lines(viewer, 3);
+    overlay_feature_lines(viewer, V.cols());
 }
 
 void calc_feature_lines()
