@@ -210,32 +210,49 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (ImGui::Button("Triangulate"))
+        if (ImGui::CollapsingHeader("Reconstruction", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            MatrixXd UV, H;
-            MatrixXi E;
-            get_uv_coord_from_pixel_img(sampling_data, UV, E);
+            if (ImGui::Button("Triangulate"))
+            {
+                MatrixXd UV, H;
+                MatrixXi E;
+                get_uv_coord_from_pixel_img(sampling_data, UV, E);
 
-            igl::triangle::triangulate(UV, E, H, "a0.005q", V2, F2);
+                igl::triangle::triangulate(UV, E, H, "a0.005q", V2, F2);
 
-            viewer.data().clear();
-            viewer.data().set_mesh(V2, F2);
-            viewer.core.align_camera_center(V2, F2);
-            viewer.data().show_lines = true;
-        }
+                viewer.data().clear();
+                viewer.data().set_mesh(V2, F2);
+                viewer.core.align_camera_center(V2, F2);
+                viewer.data().show_lines = true;
+            }
 
-        if (ImGui::Button("Reproject"))
-        {
-            //reproject_by_search();
-            reproject_by_face_index();
+            if (ImGui::Button("Reproject (fast)"))
+            {
+                //reproject_by_search();
+                reproject_by_face_index();
 
-            // View the new mesh
-            viewer.data().clear();
+                // View the new mesh
+                viewer.data().clear();
 
-            viewer.data().set_mesh(V3, F2);
-            viewer.core.align_camera_center(V3, F2);
-            viewer.data().show_texture = false;
-            viewer.data().show_lines = true;
+                viewer.data().set_mesh(V3, F2);
+                viewer.core.align_camera_center(V3, F2);
+                viewer.data().show_texture = false;
+                viewer.data().show_lines = true;
+            }
+
+            if (ImGui::Button("Reproject (accurate)"))
+            {
+                //reproject_by_search();
+                reproject_by_search();
+
+                // View the new mesh
+                viewer.data().clear();
+
+                viewer.data().set_mesh(V3, F2);
+                viewer.core.align_camera_center(V3, F2);
+                viewer.data().show_texture = false;
+                viewer.data().show_lines = true;
+            }
         }
     };
     
