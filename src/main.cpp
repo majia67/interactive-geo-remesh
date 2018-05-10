@@ -234,9 +234,11 @@ void reset_mesh(igl::opengl::glfw::Viewer &viewer, MatrixXd &V, MatrixXi &F)
     viewer.data().clear();
 
     viewer.data().set_mesh(V, F);
-    viewer.core.align_camera_center(V, F);
     viewer.data().show_texture = false;
     viewer.data().show_lines = true;
+    viewer.core.trackball_angle = Eigen::Quaternionf::Identity();
+    viewer.core.model_translation << 0, 0, 0;
+    viewer.core.align_camera_center(V, F);
 
     overlay_feature_lines(viewer, 3);
 }
