@@ -13,7 +13,7 @@ Below are the major steps involved in this pipeline:
 1.	Features extraction
 1.	Control map design
 1.	Control map sampling and preview
-1.	Mesh creation through Delaunay triangulation
+1.	Mesh creation through Delaunay triangulation (with optimization option)
 1.  Reproject 2D mesh into 3D
 
 Currently, the input of this pipeline must be a mesh patch with genus-0 and a open boundary. The output of this pipeline is a new mesh which has the desired properties (e.g., uniform).

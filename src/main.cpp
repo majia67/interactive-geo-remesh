@@ -42,6 +42,9 @@ struct Option
 
     // Sampling
     int num_of_samples;
+
+    // Triangulation
+    char triangulation_flag[15];
 } options;
 
 MatrixXd V(0, 3);                       //vertex array, #V x3
@@ -101,6 +104,7 @@ int main(int argc, char *argv[])
     options.use_gaus_curv_map = false;
     options.scaling_factor = 1.0;
     options.num_of_samples = V.rows() / 10;
+    std::strcpy(options.triangulation_flag, "a0.005q");
 
     // Calculate principle curvatures
     cout << "Calculate principle curvatures" << endl;
@@ -203,12 +207,14 @@ int main(int argc, char *argv[])
 
         if (ImGui::CollapsingHeader("Reconstruction", ImGuiTreeNodeFlags_DefaultOpen))
         {
+            ImGui::InputText("Optimization Flag", options.triangulation_flag, sizeof(options.triangulation_flag));
+
             if (ImGui::Button("Triangulate"))
             {
                 MatrixXd UV, H;
                 MatrixXi E;
                 get_uv_coord_from_pixel_img(sampling_data, UV, E);
-                igl::triangle::triangulate(UV, E, H, "a0.005q", V2, F2);
+                igl::triangle::triangulate(UV, E, H, options.triangulation_flag, V2, F2);
                 reset_mesh(viewer, V2, F2);
             }
 
