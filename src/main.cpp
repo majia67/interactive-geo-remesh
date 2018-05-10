@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
     options.use_mean_curv_map = true;
     options.use_gaus_curv_map = false;
     options.scaling_factor = 1.0;
-    options.num_of_samples = V.rows() / 10;
+    options.num_of_samples = V.rows();
     std::strcpy(options.triangulation_flag, "a0.005q");
 
     // Calculate principle curvatures
